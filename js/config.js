@@ -6,7 +6,7 @@ const CONFIG = {
   SUPABASE_URL: 'https://cctqwnnezfnrajngwntt.supabase.co',
   // Publishable key (safe to be public — it opens nothing without a login).
   // Supabase → Project Settings → API Keys → "Publishable key" (sb_publishable_…). Paste it between the quotes:
-  SUPABASE_KEY: 'PASTE_YOUR_PUBLISHABLE_KEY_HERE',
+  SUPABASE_KEY: 'sb_publishable_JJXNYfaHB6CKfGrtA3JxYA_cxpUNAHz',
   DEFAULT_LOCATION: 'Delhi- Offline',
   LOCATIONS: ['Delhi- Offline', 'Delhi- Online', 'Gujarat', 'Karnataka'],
   PROFIT_LOCATIONS: ['Delhi- Offline'],            // locations where profit is entered; others are sales-only for now
