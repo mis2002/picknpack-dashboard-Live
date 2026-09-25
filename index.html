@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pick N Pack — Sales Dashboard</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=20260925c">
+</head>
+<body>
+<div class="login-gate" id="loginGate" style="display:none">
+  <div class="gate-card">
+    <img src="assets/logo.png?v=20260925c" alt="PicknPack" class="gate-logo" onerror="this.style.display='none'">
+    <div id="gateLogin">
+      <h2>Sales Dashboard</h2>
+      <p class="gate-sub">Login karein. Sirf allowed emails ke liye.</p>
+      <button type="button" class="gate-google" id="gateGoogle">
+        <svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.2l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+        Sign in with Google
+      </button>
+      <div class="gate-or"><span>ya email se</span></div>
+      <input type="email" id="gateEmail" placeholder="aapka@picknpack.co" autocomplete="email">
+      <button type="button" class="refresh-btn gate-email-btn" id="gateEmailBtn">Email par login link bhejo</button>
+      <p class="gate-msg" id="gateMsg" style="display:none"></p>
+    </div>
+    <div id="gateSent" style="display:none">
+      <h2>Email check karein</h2>
+      <p class="gate-sub"><b id="gateSentEmail"></b> par login link bheja gaya hai. Usi browser me link kholein.</p>
+      <button type="button" class="util-btn" onclick="showGate('login')">Wapas</button>
+    </div>
+    <div id="gateNoAccess" style="display:none">
+      <h2>Access nahi hai</h2>
+      <p class="gate-sub"><b id="gateNoAccessEmail"></b> is dashboard ki list me nahi hai. Admin (mis2@picknpack.co) se access maangein.</p>
+      <button type="button" class="util-btn" onclick="signOut()">Doosre account se login</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+<div class="app">
+
+  <aside class="sidebar">
+    <img class="sb-logo" id="sbLogo" alt="" style="display:none"><div class="sb-brand">PnP</div>
+    <nav class="sb-nav">
+      <button class="sb-item active" data-tab="main" title="Main dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>
+        <span>Main</span>
+      </button>
+      <button class="sb-item" data-tab="bi" title="BI insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+        <span>Insights</span>
+      </button>
+      <button class="sb-item" data-tab="scoring" title="MIS scoring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
+        <span>Scoring</span>
+      </button>
+      <button class="sb-item" data-tab="customers" title="Customer insights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+        <span>Customers</span>
+      </button>
+      <div class="sb-sep"></div>
+      <button class="sb-item" data-tab="locations" title="All locations — sales only, pick any combination">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+        <span>All Locations</span>
+      </button>
+      <a class="sb-item sb-link" href="branches.html" title="Online &amp; Branches dashboard (Delhi- Online, Gujarat, Karnataka)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>
+        <span>Online &amp; Branches</span>
+      </a>
+    </nav>
+    <div class="sb-foot">
+      <button class="sb-item" id="adminBtn" title="Admin settings (password protected)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span>Admin</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="brand-row">
+        <img id="brandLogo" class="brand-logo" alt="Company logo" style="display:none">
+        <div>
+        <p class="brand" id="brandLabel">PICK N PACK</p>
+        <h1 id="dashTitle">Sales Dashboard</h1>
+        <p class="period"><span class="loc-pill" id="locPill">Delhi- Offline</span> <span id="periodDesc">Connecting…</span></p>
+        </div>
+      </div>
+      <div class="sync-box">
+        <div class="sync-status" id="syncStatus"><span class="live-dot" id="liveDot"></span>Connecting…</div>
+        <span class="sync-pill" id="zohoBadge" style="display:none"></span>
+        <button class="util-btn" id="saveViewBtn" title="Remember current filters and chart types for next time">Save view</button>
+        <button class="util-btn" id="resetViewBtn" title="Clear saved filters and go back to defaults">Reset</button>
+        <button class="refresh-btn" id="refreshBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+          Refresh
+        </button>
+        <div class="user-box">
+          <span class="avatar" id="avatarBadge" tabindex="0">PN</span>
+          <div class="user-menu"><span id="userEmail"></span><button class="util-btn small" id="logoutBtn">Logout</button></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="errbar" id="errBar"></div>
+    <div class="loading-screen" id="loadingScreen"><div class="spinner"></div>Loading your sales data…</div>
+
+    <div id="dashboardBody" style="display:none">
+
+      <section class="hero" id="monthBanner">
+        <div class="hero-text">
+          <p class="hero-hello" id="heroHello">Hello, team!</p>
+          <p class="hero-sub" id="heroSub">Here's where sales stand for the period you've picked below.</p>
+        </div>
+        <svg class="hero-art" viewBox="0 0 220 120" fill="#fff" aria-hidden="true">
+          <rect x="10" y="70" width="26" height="50" rx="7"/><rect x="50" y="48" width="26" height="72" rx="7"/>
+          <rect x="90" y="58" width="26" height="62" rx="7"/><rect x="130" y="24" width="26" height="96" rx="7"/>
+          <rect x="170" y="6" width="26" height="114" rx="7"/>
+        </svg>
+        <div class="hero-figure">
+          <div class="mb-title" id="mbLabel">Total</div>
+          <div class="mb-val" id="mbVal">₹0</div>
+          <div class="mb-sub" id="mbSub"></div>
+        </div>
+      </section>
+
+      <div class="filterbar" id="mainFilterbar">
+        <div class="filter-block">
+          <span class="fb-label">Metric</span>
+          <div class="seg-toggle" id="metricToggle">
+            <button data-metric="net" class="active">Sales (w/o GST)</button>
+            <button data-metric="gross">Sales (with GST)</button>
+            <button data-metric="profit">Profit</button>
+          </div>
+        </div>
+        <div class="filter-block">
+          <span class="fb-label">Order type</span>
+          <div class="seg-toggle" id="orderTypeToggle">
+            <button data-ordertype="ALL" class="active">All</button>
+            <button data-ordertype="CRR">CRR (repeat)</button>
+            <button data-ordertype="NBD">NBD (new)</button>
+          </div>
+        </div>
+        <div class="filter-block">
+          <span class="fb-label">Salesperson</span>
+          <select id="spFilter"><option value="ALL">All Salespersons</option></select>
+        </div>
+        <div class="filter-block">
+          <span class="fb-label">View</span>
+          <div class="seg-toggle" id="modeToggle">
+            <button data-mode="ALL" class="active">All time</button>
+            <button data-mode="WEEK">By week</button>
+            <button data-mode="MONTH">By month</button>
+            <button data-mode="RANGE">Custom range</button>
+          </div>
+        </div>
+        <div class="filter-block">
+          <span class="fb-label">Year (quick pick)</span>
+          <select id="yearFilter"><option value="ALL">Pick a year</option></select>
+        </div>
+        <div class="filter-block" id="weekBlock" style="display:none">
+          <span class="fb-label">Select week</span>
+          <select id="weekFilter"></select>
+        </div>
+        <div class="filter-block" id="monthBlock" style="display:none">
+          <span class="fb-label">Select month</span>
+          <select id="monthFilter"></select>
+        </div>
+        <div class="filter-block" id="rangeBlock" style="display:none">
+          <span class="fb-label">Date range</span>
+          <div class="range-row">
+            <input type="date" id="rangeStart"><span>to</span><input type="date" id="rangeEnd">
+          </div>
+        </div>
+        <div class="filter-block">
+          <span class="fb-label">Quick range <span class="muted">(based on latest invoice date)</span></span>
+          <div class="seg-toggle" id="quickToggle">
+            <button data-q="thisWeek">This week</button>
+            <button data-q="lastWeek">Last week</button>
+            <button data-q="thisMonth">This month</button>
+            <button data-q="lastMonth">Last month</button>
+            <button data-q="last30">Last 30 days</button>
+            <button data-q="fy">This FY</button>
+            <button data-q="all">All time</button>
+          </div>
+        </div>
+        <div class="filter-block fb-right">
+          <span class="fb-label">Export</span>
+          <button class="util-btn" id="exportInvoicesBtn" title="Download every invoice in the current filter">Export filtered invoices</button>
+        </div>
+      </div>
+
+      <div id="mainTab">
+
+        <div id="panel-weekstrip">
+          <div class="weekstrip-head">
+            <h2 id="weekStripTitle">Last 4 weeks</h2>
+            <span class="desc" id="weekStripDesc"></span>
+          </div>
+          <div class="weekstrip" id="weekStrip"></div>
+        </div>
+
+        <div class="kpis" id="kpiRow"></div>
+
+        <div class="panel" id="panel-main-insights">
+          <div class="panel-head"><div>
+            <h2>Key insights</h2>
+            <p class="desc">Sales story for the selected filters, written from your data. Click an insight to see the invoices behind it.</p>
+          </div></div>
+          <div class="insight-grid" id="mainInsights"></div>
+        </div>
+
+        <div class="panel mis-panel" id="panel-mis">
+          <div class="mis-header">
+            <div>
+              <div class="mis-title">MIS Sales Report — <span id="misPeriodLabel">…</span></div>
+              <div class="mis-sub">Sales by person and sales type, amounts in ₹ without GST, <span id="misCompareLabel">vs previous period</span></div>
+              <div class="mis-sub" id="misLinkNote"></div>
+            </div>
+            <div class="chart-toggle" data-target="misGran">
+              <button data-type="day">Daily</button>
+              <button data-type="week">Weekly</button>
+              <button data-type="month" class="active">Monthly</button>
+              <button data-type="year">Yearly</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="mis-table">
+              <thead>
+                <tr>
+                  <th rowspan="2" class="mis-corner">Sales Person</th>
+                  <th colspan="3" class="mis-grp mis-crr">CRR</th>
+                  <th colspan="3" class="mis-grp mis-nbd">NBD</th>
+                  <th colspan="3" class="mis-grp mis-total">TOTAL</th>
+                  <th rowspan="2" class="mis-grp mis-growth-head">Growth</th>
+                  <th rowspan="2" class="mis-grp mis-rank-head">Rank</th>
+                </tr>
+                <tr>
+                  <th class="mis-sub-head mis-crr-sub">Inv Count</th>
+                  <th class="mis-sub-head mis-crr-sub">Sales (W/O GST)</th>
+                  <th class="mis-sub-head mis-crr-sub">Profit</th>
+                  <th class="mis-sub-head mis-nbd-sub">Inv Count</th>
+                  <th class="mis-sub-head mis-nbd-sub">Sales (W/O GST)</th>
+                  <th class="mis-sub-head mis-nbd-sub">Profit</th>
+                  <th class="mis-sub-head mis-total-sub">Inv Count</th>
+                  <th class="mis-sub-head mis-total-sub">Sales (W/O GST)</th>
+                  <th class="mis-sub-head mis-total-sub">Profit</th>
+                </tr>
+              </thead>
+              <tbody id="misTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-growth">
+          <div class="panel-head">
+            <div>
+              <h2 id="growthTitle">Salesperson-wise weekly growth</h2>
+              <p class="desc" id="growthDesc">Per week, with week-over-week % change</p>
+            </div>
+            <div class="chart-toggle" data-target="growthGran">
+              <button data-type="day">Daily</button>
+              <button data-type="week" class="active">Weekly</button>
+              <button data-type="month">Monthly</button>
+              <button data-type="year">Yearly</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table id="growthTableWrap">
+              <thead><tr id="growthHeadRow"><th>#</th><th>Salesperson</th></tr></thead>
+              <tbody id="growthTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-trend">
+          <div class="panel-head">
+            <div>
+              <h2 id="trendTitle">Sales trend</h2>
+              <p class="desc" id="trendDesc">Filtered period, day by day</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div class="chart-toggle" data-target="trendGran">
+                <button data-type="auto" class="active">Auto</button>
+                <button data-type="day">Daily</button>
+                <button data-type="week">Weekly</button>
+                <button data-type="month">Monthly</button>
+                <button data-type="year">Yearly</button>
+              </div>
+              <div class="chart-toggle" data-target="trend">
+                <button data-type="bar" class="active">Bar</button>
+                <button data-type="line">Line</button>
+                <button data-type="area">Area</button>
+              </div>
+            </div>
+          </div>
+          <div class="chart-box tall"><div class="chart-inner"><canvas id="trendChart"></canvas></div></div>
+          <p class="hover-hint">Every bar shows its value on top. Hover or tap for net sales, GST value, profit and invoice count. With lots of periods the chart widens and scrolls sideways so bars never get squeezed.</p>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-wow">
+            <div class="panel-head">
+              <div>
+                <h2>Week-over-week comparison</h2>
+                <p class="desc" id="wowDesc">Weeks present in the current filter</p>
+              </div>
+              <div class="chart-toggle" data-target="wow">
+                <button data-type="bar" class="active">Bar</button>
+                <button data-type="line">Line</button>
+              </div>
+            </div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="wowChart"></canvas></div></div>
+          </div>
+
+          <div class="panel" id="panel-split">
+            <div class="panel-head">
+              <div>
+                <h2>Order type split</h2>
+                <p class="desc">CRR (repeat) vs NBD (new business)</p>
+              </div>
+              <div class="chart-toggle" data-target="split">
+                <button data-type="stacked" class="active">Stacked</button>
+                <button data-type="grouped">Grouped</button>
+                <button data-type="pie">Pie (total)</button>
+              </div>
+            </div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="splitChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-sp">
+          <div class="panel-head">
+            <div>
+              <h2>Salesperson performance</h2>
+              <p class="desc" id="spDesc">Top 8 performers in the current filter</p>
+            </div>
+            <div class="chart-toggle" data-target="sp">
+              <button data-type="stacked" class="active">Stacked</button>
+              <button data-type="grouped">Grouped</button>
+              <button data-type="line">Line (trend)</button>
+            </div>
+          </div>
+          <div class="chart-box tall"><div class="chart-inner"><canvas id="spChart"></canvas></div></div>
+          <p class="hover-hint">Stacked view shows each week inside the bar and the total on top. Hover any segment for net, GST-inclusive and profit figures.</p>
+        </div>
+
+        <div class="panel" id="panel-customers">
+          <div class="panel-head">
+            <div>
+              <h2>Top customers</h2>
+              <p class="desc" id="custDesc">Ranked by net sales, current filter</p>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Customer</th><th>Type</th><th>Salesperson</th>
+                <th style="text-align:right">Invoices</th><th style="text-align:right" id="custMetricHead">Net sales</th>
+                <th style="text-align:right">Profit</th><th style="text-align:right">GP %</th><th>Share</th>
+              </tr></thead>
+              <tbody id="custTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /mainTab -->
+
+      <div id="biTab" style="display:none">
+
+        <div class="kpi-mini-row" id="biTopKpis"></div>
+
+        <div class="panel" id="panel-bi-insights">
+          <div class="panel-head"><div>
+            <h2>Profit insights</h2>
+            <p class="desc">Margin, leakage and efficiency findings. Click an insight to drill in.</p>
+          </div></div>
+          <div class="insight-grid" id="biInsights"></div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-bi-revtaxprofit">
+            <div class="panel-head"><div>
+              <h2>Revenue vs tax vs profit</h2>
+              <p class="desc" id="biRevDesc">How much of billed value is tax vs your actual margin</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biRevTaxProfit"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-bi-invoicecount">
+            <div class="panel-head"><div>
+              <h2 id="biInvCountTitle">Invoice count trend</h2>
+              <p class="desc">How many bills were raised, over time</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biInvoiceCount"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-bi-profitpie">
+            <div class="panel-head"><div>
+              <h2>Profit contribution by salesperson</h2>
+              <p class="desc">Share of total profit, current filter</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biProfitPie"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-bi-rank">
+            <div class="panel-head"><div>
+              <h2>Top 5 and bottom 5 salespersons</h2>
+              <p class="desc" id="biRankDesc">Ranked by current metric</p>
+            </div></div>
+            <div class="table-scroll">
+              <table><thead><tr><th>#</th><th>Salesperson</th><th style="text-align:right">Value</th><th style="text-align:right">Invoices</th></tr></thead>
+              <tbody id="biTop5"></tbody></table>
+            </div>
+            <p class="hover-hint" style="margin-top:14px;font-weight:700">Bottom 5</p>
+            <div class="table-scroll">
+              <table><thead><tr><th>#</th><th>Salesperson</th><th style="text-align:right">Value</th><th style="text-align:right">Invoices</th></tr></thead>
+              <tbody id="biBottom5"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-bi-repeatpie">
+            <div class="panel-head"><div>
+              <h2>Repeat vs one-time customers</h2>
+              <p class="desc">Based on your CRR (repeat) / NBD (new) order type field</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biRepeatPie"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-bi-margin">
+            <div class="panel-head"><div>
+              <h2>Customer profit-margin leaderboard</h2>
+              <p class="desc">Top 10 by GP % (customers with 2+ invoices)</p>
+            </div></div>
+            <div class="table-scroll">
+              <table><thead><tr><th>#</th><th>Customer</th><th style="text-align:right">Net</th><th style="text-align:right">GP %</th></tr></thead>
+              <tbody id="biMarginTable"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-bi-profitdist">
+            <div class="panel-head"><div>
+              <h2>Profit % per invoice — distribution</h2>
+              <p class="desc">How many invoices fall in each margin band</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biProfitDist"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-bi-flag">
+            <div class="panel-head"><div>
+              <h2>Zero or low-profit orders</h2>
+              <p class="desc" id="biFlagDesc">Invoices with 0% or negative margin</p>
+            </div></div>
+            <div id="biFlagList"></div>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-bi-efficiency">
+            <div class="panel-head"><div>
+              <h2>Salesperson efficiency</h2>
+              <p class="desc">Average profit per order — rewards quality, not just volume</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biEfficiency"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-bi-taxtrend">
+            <div class="panel-head"><div>
+              <h2>Tax collected</h2>
+              <p class="desc" id="biTaxDesc">Trend over the current filter</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="biTaxTrend"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-bi-outlier">
+          <div class="panel-head"><div>
+            <h2>Unusually large invoices</h2>
+            <p class="desc" id="biOutlierDesc">Statistical outliers worth a quick sanity check</p>
+          </div></div>
+          <div id="biOutlierList"></div>
+        </div>
+
+      </div><!-- /biTab -->
+
+      <div id="scoringTab" style="display:none">
+
+        <div class="panel" id="panel-score-insights">
+          <div class="panel-head"><div>
+            <h2>Scoring insights</h2>
+            <p class="desc">Plan vs actual summary for the scoring period. Click a name to open their profile.</p>
+          </div></div>
+          <div class="insight-grid" id="scoreInsights"></div>
+        </div>
+        <div class="panel mis-panel" id="panel-scoring">
+          <div class="mis-header">
+            <div>
+              <div class="mis-title">MIS Scoring — <span id="scorePeriodLabel">…</span></div>
+              <div class="mis-sub">Achievement = Actual ÷ Plan × 100 (capped). Points = achievement × weight. Overall = sum of points out of 100. Amounts without GST. Click a card, an Actual or a Plan for details.</div>
+              <div class="mis-sub" id="scoreLinkNote"></div>
+            </div>
+            <div class="chart-toggle" data-target="scoreGran">
+              <button data-type="day">Daily</button>
+              <button data-type="week" class="active">Weekly</button>
+              <button data-type="month">Monthly</button>
+              <button data-type="year">Yearly</button>
+            </div>
+          </div>
+          <div id="deptNoteBox"></div>
+
+          <h3 class="score-h3" style="margin-top:6px">Overall report — this period vs previous</h3>
+          <div class="kpi-mini-row" id="scoreOverallStrip" style="margin-bottom:6px"></div>
+
+          <div class="score-bar">
+            <div class="score-factor" id="scoreFactor"></div>
+            <div class="seg-toggle" id="scoreViewToggle"><button data-v="cards" class="active">Cards</button><button data-v="table">Table</button></div>
+          </div>
+          <div class="st-tiles" id="scoreTeamTiles"></div>
+          <h3 class="score-h3">NBD team scorecard <span class="muted">· New customers, profit, revenue, avg sale per customer</span></h3>
+          <div id="nbdCards"></div>
+          <div class="table-scroll" style="margin-top:10px">
+            <table class="mis-cross-table" style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead><tr>
+                <th>NBD team — CRR orders brought in (same period)</th>
+                <th>Uniq. Customers</th><th>CRR Invoices</th><th>CRR Sales (W/O GST)</th>
+                <th>CRR Profit</th><th>Profit Margin</th><th>Margin Growth</th>
+              </tr></thead>
+              <tbody id="nbdCrossBody"></tbody>
+            </table>
+          </div>
+
+          <h3 class="score-h3" style="margin-top:26px">CRR team scorecard <span class="muted">· Profit, revenue, retention, margin</span></h3>
+          <div id="crrCards"></div>
+          <div class="table-scroll" style="margin-top:10px">
+            <table class="mis-cross-table" style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead><tr>
+                <th>CRR team — NBD orders brought in (same period)</th>
+                <th>Uniq. Customers</th><th>NBD Invoices</th><th>NBD Sales (W/O GST)</th>
+                <th>NBD Profit</th><th>Profit Margin</th><th>Margin Growth</th>
+              </tr></thead>
+              <tbody id="crrCrossBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /scoringTab -->
+
+      <div id="locationsTab" style="display:none"><div id="mvRootOffline"></div></div>
+
+      <div id="customersTab" style="display:none">
+        <div class="weekstrip-head">
+          <h2>Customer insights</h2>
+          <span class="desc" id="custPeriodNote"></span>
+        </div>
+        <div class="kpis" id="custKpis"></div>
+
+        <div class="panel" id="panel-cust-insights">
+          <div class="panel-head"><div>
+            <h2>Key insights</h2>
+            <p class="desc">Written automatically from your data for the selected filters</p>
+          </div></div>
+          <div class="insight-grid" id="custInsights"></div>
+        </div>
+
+        <div class="panel" id="panel-cust-map">
+          <div class="panel-head">
+            <div>
+              <h2>Where our customers are</h2>
+              <p class="desc" id="custMapDesc"></p>
+            </div>
+            <div class="seg-toggle" id="mapModeToggle">
+              <button data-m="both" class="active">States + pin codes</button><button data-m="states">States</button><button data-m="pins">Pin codes</button>
+            </div>
+          </div>
+          <div class="map-layout">
+            <div class="map-box" id="mapBox">
+              <div class="map-ctrl"><button id="mapZoomIn" aria-label="Zoom in">+</button><button id="mapZoomOut" aria-label="Zoom out">−</button><button id="mapReset" aria-label="Reset view" style="font-size:14px">⟲</button></div>
+              <div id="mapSvgHost" style="height:100%"></div>
+              <div class="map-tip" id="mapTip"></div>
+              <div class="map-legend" id="mapLegend"></div>
+            </div>
+            <div class="map-side">
+              <div class="kpi-mini-row" id="mapStats" style="grid-template-columns:1fr 1fr;margin:0"></div>
+              <div class="map-status" id="mapStatus"></div>
+              <h3 class="score-h3" style="margin:2px 0">Top cities and towns</h3>
+              <div class="table-scroll" style="max-height:380px">
+                <table style="min-width:0"><thead><tr><th>#</th><th>City</th><th style="text-align:right">Customers</th><th style="text-align:right">Net sales</th><th style="text-align:right">Share</th></tr></thead>
+                <tbody id="mapCityTable"></tbody></table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid3 grid-wide-left">
+          <div class="panel" id="panel-cust-state">
+            <div class="panel-head"><div>
+              <h2>Sales by state (Place of Supply)</h2>
+              <p class="desc" id="custStateDesc"></p>
+            </div></div>
+            <div class="chart-box" id="custStateBox"><div class="chart-inner"><canvas id="custStateChart"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-cust-region">
+            <div class="panel-head"><div>
+              <h2>Sales by region</h2>
+              <p class="desc">States grouped into North, West, South, East, Central, North-East</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="custRegionChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-statetable">
+          <div class="panel-head"><div>
+            <h2>State-wise report</h2>
+            <p class="desc">Every state in the selected period, with margin and sales per customer</p>
+          </div></div>
+          <div class="table-scroll" style="max-height:420px">
+            <table><thead><tr><th>#</th><th>State</th><th>Region</th><th style="text-align:right">Customers</th><th style="text-align:right">Invoices</th>
+              <th style="text-align:right">Net sales</th><th style="text-align:right">Share</th><th style="text-align:right">Profit</th><th style="text-align:right">GP %</th><th style="text-align:right">Sales / customer</th></tr></thead>
+            <tbody id="custStateTable"></tbody></table>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-cust-segments">
+            <div class="panel-head"><div>
+              <h2>Customer segments</h2>
+              <p class="desc">Based on how recently, how often and how much each customer buys</p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="custSegmentChart"></canvas></div></div>
+          </div>
+          <div class="panel" id="panel-cust-conc">
+            <div class="panel-head"><div>
+              <h2>Customer concentration</h2>
+              <p class="desc" id="custConcDesc"></p>
+            </div></div>
+            <div class="chart-box"><div class="chart-inner"><canvas id="custConcChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-segtable">
+          <div class="panel-head"><div>
+            <h2>What to do with each segment</h2>
+            <p class="desc">Click a row to see those customers in the full report below</p>
+          </div></div>
+          <div class="table-scroll">
+            <table><thead><tr><th>Segment</th><th style="text-align:right">Customers</th><th style="text-align:right">Lifetime sales</th><th style="text-align:right">This period</th><th>Meaning and action</th></tr></thead>
+            <tbody id="custSegmentTable"></tbody></table>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-nvr">
+          <div class="panel-head"><div>
+            <h2>New vs returning customers by month</h2>
+            <p class="desc">Customer counts per month (last 12 months up to the selected period). Hover for sales split.</p>
+          </div></div>
+          <div class="chart-box"><div class="chart-inner"><canvas id="custNvrChart"></canvas></div></div>
+        </div>
+
+        <div class="grid3">
+          <div class="panel" id="panel-cust-risk">
+            <div class="panel-head"><div>
+              <h2>At-risk call list</h2>
+              <p class="desc" id="custRiskDesc"></p>
+            </div></div>
+            <div class="table-scroll">
+              <table style="min-width:620px"><thead><tr><th>Customer</th><th>Salesperson</th><th>State</th><th style="text-align:right">Last order</th><th style="text-align:right">Quiet for</th><th style="text-align:right">Usual gap</th><th style="text-align:right">Lifetime</th></tr></thead>
+              <tbody id="custRiskTable"></tbody></table>
+            </div>
+          </div>
+          <div class="panel" id="panel-cust-lowmargin">
+            <div class="panel-head"><div>
+              <h2>Big customers, low margin</h2>
+              <p class="desc" id="custLowDesc"></p>
+            </div></div>
+            <div class="table-scroll">
+              <table style="min-width:580px"><thead><tr><th>Customer</th><th>Salesperson</th><th style="text-align:right">Net sales</th><th style="text-align:right">Profit</th><th style="text-align:right">GP %</th><th style="text-align:right">Profit gap vs avg</th></tr></thead>
+              <tbody id="custLowTable"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-pins">
+          <div class="panel-head"><div>
+            <h2>Top pin codes</h2>
+            <p class="desc" id="custPinDesc"></p>
+          </div></div>
+          <div class="table-scroll">
+            <table><thead><tr><th>#</th><th>Pin code</th><th>State</th><th style="text-align:right">Customers</th><th style="text-align:right">Invoices</th><th style="text-align:right">Net sales</th><th style="text-align:right">Share</th><th style="text-align:right">GP %</th><th>Biggest customer</th></tr></thead>
+            <tbody id="custPinTable"></tbody></table>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-cust-table">
+          <div class="panel-head">
+            <div>
+              <h2>Full customer report</h2>
+              <p class="desc"><span id="custTableCount"></span> · click any customer for their full history, click a column to sort</p>
+            </div>
+            <button class="util-btn" id="custExport">Export CSV</button>
+          </div>
+          <div class="tbl-tools">
+            <input type="search" id="custSearch" placeholder="Search customer, pin code or salesperson…" aria-label="Search customers">
+            <select id="custStateFilter" aria-label="Filter by state"></select>
+            <select id="custSegFilter" aria-label="Filter by segment"></select>
+          </div>
+          <div class="table-scroll" style="max-height:640px">
+            <table style="min-width:1250px">
+              <thead><tr id="custTableHead">
+                <th data-sort="name">Customer</th><th>Segment</th><th data-sort="state">State / pin</th><th>Salesperson</th>
+                <th data-sort="perNet" style="text-align:right">Period sales</th><th data-sort="perGp" style="text-align:right">Period GP %</th>
+                <th data-sort="growth" style="text-align:right">Trend</th><th data-sort="lifeNet" style="text-align:right">Lifetime sales</th>
+                <th data-sort="invoices" style="text-align:right">Invoices</th><th data-sort="aov" style="text-align:right">Avg invoice</th>
+                <th data-sort="first" style="text-align:right">First order</th><th data-sort="recency" style="text-align:right">Days since order</th>
+                <th data-sort="gap" style="text-align:right">Reorder gap</th>
+              </tr></thead>
+              <tbody id="custTableBody"></tbody>
+            </table>
+          </div>
+          <div style="text-align:center;margin-top:12px"><button class="util-btn" id="custShowMore">Show more</button></div>
+        </div>
+      </div><!-- /customersTab -->
+
+      <footer>Weeks run Monday–Saturday. Values in INR. Data from Supabase (synced from Zoho ERP).<span id="dataHealth"></span></footer>
+    </div>
+  </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="custPopupOverlay">
+  <div class="modal-box" id="custPopupBox" style="max-width:92vw;width:700px;height:75vh;min-width:320px;min-height:280px;resize:both;overflow:auto;display:flex;flex-direction:column;">
+    <div class="modal-head" style="flex:0 0 auto;">
+      <h3 id="custPopupTitle">Customers</h3>
+      <button class="modal-close" id="custPopupClose" aria-label="Close">✕</button>
+    </div>
+    <p style="flex:0 0 auto;font-size:11px;color:var(--ink-dim);margin:-8px 0 8px">Drag the bottom-right corner to resize this window.</p>
+    <div style="flex:1 1 auto;overflow:auto;min-height:0">
+      <table class="popup-table" style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:0">
+        <thead><tr>
+          <th>Customer</th><th style="text-align:right">Sales (W/O GST)</th><th style="text-align:right">Profit</th><th style="text-align:right">Margin</th>
+        </tr></thead>
+        <tbody id="custPopupBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="custDetailOverlay">
+  <div class="modal-box" style="max-width:860px">
+    <div class="modal-head" style="align-items:flex-start">
+      <div><h3 id="custDetailTitle">Customer</h3><div id="custDetailMeta" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+      <button class="modal-close" id="custDetailClose" aria-label="Close">✕</button>
+    </div>
+    <div class="kpi-mini-row" id="custDetailKpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"></div>
+    <h3 class="score-h3" style="margin-top:4px">Monthly net sales</h3>
+    <div class="chart-box" style="height:220px"><div class="chart-inner"><canvas id="custDetailChart"></canvas></div></div>
+    <h3 class="score-h3">Latest invoices</h3>
+    <div class="table-scroll" style="max-height:300px">
+      <table style="min-width:600px"><thead><tr><th>Date</th><th>Invoice</th><th>Salesperson</th><th>Type</th><th style="text-align:right">Net</th><th style="text-align:right">Profit</th><th style="text-align:right">GP %</th></tr></thead>
+      <tbody id="custDetailInv"></tbody></table>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="scoreDetailOverlay">
+  <div class="modal-box" style="max-width:960px">
+    <div class="modal-head" style="align-items:flex-start;gap:14px">
+      <div class="sd-head" id="sdHead"></div>
+      <button class="modal-close" id="scoreDetailClose" aria-label="Close">✕</button>
+    </div>
+    <div id="sdBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="invListOverlay">
+  <div class="modal-box" style="max-width:1040px">
+    <div class="modal-head" style="align-items:flex-start">
+      <div><h3 id="invListTitle">Invoices</h3><p class="desc" id="invListSub" style="margin:4px 0 0;font-size:12px;color:var(--ink-dim)"></p>
+        <div id="invListLinks" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div></div>
+      <button class="modal-close" id="invListClose" aria-label="Close">✕</button>
+    </div>
+    <div class="kpi-mini-row" id="invListKpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))"></div>
+    <div class="tbl-tools">
+      <div class="seg-toggle" id="invListGroup">
+        <button data-g="inv" class="active">Invoices</button><button data-g="cust">By customer</button>
+        <button data-g="sp">By salesperson</button><button data-g="state">By state</button><button data-g="type">By order type</button>
+      </div>
+      <input type="search" id="invListSearch" placeholder="Search customer, invoice, salesperson, state, pin…" aria-label="Search invoices">
+      <button class="util-btn" id="invListExport">Export CSV</button>
+    </div>
+    <div class="table-scroll" style="max-height:52vh">
+      <table id="invListTable" style="min-width:900px"><thead id="invListHead"></thead><tbody id="invListBody"></tbody></table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap">
+      <span class="muted" id="invListCount"></span>
+      <button class="util-btn small" id="invListMore">Show more</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="spDetailOverlay">
+  <div class="modal-box" style="max-width:920px">
+    <div class="modal-head" style="align-items:flex-start;gap:14px">
+      <div id="spDetailAvatar"></div>
+      <div style="flex:1"><h3 id="spDetailTitle">Salesperson</h3><div id="spDetailMeta" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+      <button class="modal-close" id="spDetailClose" aria-label="Close">✕</button>
+    </div>
+    <div class="kpi-mini-row" id="spDetailKpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"></div>
+    <div class="insight-grid" id="spDetailNotes" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:12px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <h3 class="score-h3" id="spDetailChartTitle" style="margin:4px 0">Net sales</h3>
+      <button class="util-btn small" id="spDetailAll">View all invoices →</button>
+    </div>
+    <div class="chart-box" style="height:220px"><div class="chart-inner"><canvas id="spDetailChart"></canvas></div></div>
+    <div class="grid3" style="margin-top:12px">
+      <div><h3 class="score-h3">Top customers</h3>
+        <div class="table-scroll"><table style="min-width:0"><thead><tr><th>Customer</th><th style="text-align:right">Inv.</th><th style="text-align:right">Net</th><th style="text-align:right">Share</th><th style="text-align:right">GP %</th></tr></thead><tbody id="spDetailCust"></tbody></table></div></div>
+      <div><h3 class="score-h3">By state</h3>
+        <div class="table-scroll"><table style="min-width:0"><thead><tr><th>State</th><th style="text-align:right">Customers</th><th style="text-align:right">Net</th><th style="text-align:right">Share</th></tr></thead><tbody id="spDetailStates"></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="adminModalOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Admin settings</h3>
+      <button class="modal-close" id="adminModalClose" aria-label="Close">✕</button>
+    </div>
+
+    <div id="adminSettingsStage">
+      <div class="admin-grid">
+        <div class="admin-section-label">Users — who can open this dashboard</div>
+        <div style="grid-column:1/-1">
+          <div id="admUsers"></div>
+          <div class="adm-user-add">
+            <input type="email" id="admUserEmail" placeholder="name@picknpack.co">
+            <select id="admUserRole"><option value="viewer">Viewer — sirf dekh sakta hai</option><option value="admin">Admin — settings + users</option></select>
+            <button type="button" class="refresh-btn" id="admUserAddBtn">+ Add user</button>
+          </div>
+          <span class="hint">Jo email yahan hai, wahi login karke dashboard dekh sakta hai. Hatate hi access band.</span>
+        </div>
+
+        <div class="admin-section-label">Data</div>
+        <div style="grid-column:1/-1" class="adm-data">
+          <div id="admDataInfo"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button type="button" class="util-btn small" id="admReloadAll">Reload all data</button>
+            <button type="button" class="util-btn small" id="admImportOld" style="display:none">Copy settings from old dashboard (this browser)</button>
+          </div>
+        </div>
+
+        <div class="admin-section-label">Refresh</div>
+        <div class="admin-field">
+          <label>Check for new invoices every (seconds)</label>
+          <input type="number" id="admRefresh" min="60" step="30">
+          <span class="hint">Sirf nayi/badli invoices aati hain, isliye 300 (5 min) kaafi hai</span>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="admAutoRefresh">
+          <label for="admAutoRefresh">Enable auto-refresh</label>
+        </div>
+
+        <div class="admin-section-label">Branding</div>
+        <div class="admin-field">
+          <label>Small brand label</label>
+          <input type="text" id="admBrand">
+        </div>
+        <div class="admin-field">
+          <label>Dashboard title</label>
+          <input type="text" id="admTitle">
+        </div>
+        <div class="admin-field" style="grid-column:1/-1">
+          <label>Company logo</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <img id="admLogoPreview" class="logo-preview" alt="Logo preview" style="display:none">
+            <input type="file" id="admLogoFile" accept="image/*">
+            <button type="button" class="util-btn small" id="admLogoRemove">Remove logo</button>
+          </div>
+          <span class="hint">Your PickNPack logo is already built in (assets/logo.png). Upload here only if you want to replace it in this browser.</span>
+        </div>
+
+        <div class="admin-section-label">Display and thresholds</div>
+        <div class="admin-field">
+          <label>Top customers to show</label>
+          <input type="number" id="admTopCust" min="1" step="1">
+        </div>
+        <div class="admin-field">
+          <label>Top salespersons to show</label>
+          <input type="number" id="admTopSp" min="1" step="1">
+        </div>
+        <div class="admin-field">
+          <label>Outlier sensitivity (× std-dev)</label>
+          <input type="number" id="admOutlierSD" min="0.5" step="0.5">
+          <span class="hint">Lower flags more invoices as unusually large</span>
+        </div>
+        <div class="admin-field">
+          <label>Low-profit flag threshold (%)</label>
+          <input type="number" id="admLowProfit" min="0" step="1">
+          <span class="hint">0 means only zero/negative margins are flagged</span>
+        </div>
+
+        <div class="admin-section-label">Show or hide charts and tables</div>
+        <div id="admPanelList" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;max-height:220px;overflow-y:auto;padding-right:6px"></div>
+
+        <div class="admin-section-label">Salesperson salary and department</div>
+        <div style="grid-column:1/-1;font-size:11px;color:var(--ink-dim);margin-top:-6px;margin-bottom:4px">Used for scoring. Add a new salesperson's salary here as soon as they join. The CR target % field is reserved for a future conversion-ratio score.</div>
+        <div id="admSalespersonList" style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:6px"></div>
+        <div style="grid-column:1/-1;font-size:11px;color:var(--ink-dim)">Click a photo to upload a picture. Photos are saved in this browser; for every computer, add them to the repo as assets/team/&lt;name&gt;.jpg (for example assets/team/neelam-goyal.jpg).</div>
+
+        <div class="admin-section-label">MIS scoring settings <span style="font-weight:400;color:var(--ink-dim)">(pre-filled defaults)</span></div>
+        <div id="admScoring" style="grid-column:1/-1"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="refresh-btn" id="adminSaveBtn">Save and reload</button>
+        <button class="util-btn" id="adminDefaultsBtn">Restore defaults</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Safety net: any load/script error is shown on screen instead of an endless spinner -->
+<script>
+(function(){
+  function show(msg){
+    var ld=document.getElementById('loadingScreen'); if(ld) ld.style.display='none';
+    var bar=document.getElementById('errBar'); if(bar){ bar.innerHTML='&#9888;&#65039; '+msg; bar.classList.add('show'); }
+    var st=document.getElementById('syncStatus'); if(st) st.innerHTML='<span class="live-dot err"></span>Error';
+  }
+  window.addEventListener('error', function(e){
+    var t=e.target;
+    if(t && t.tagName==='SCRIPT'){
+      var src=t.getAttribute('src')||'';
+      if(src.indexOf('vendor/')>-1){ console.warn('Optional library failed: '+src); return; } // charts show a notice; data still loads
+      show('The file <b>'+src+'</b> could not be loaded. Check it is uploaded to the repo at exactly this path — GitHub Pages file names are case-sensitive.');
+      return;
+    }
+    if(t && t !== window && t.tagName && t.tagName !== 'SCRIPT') return;   // missing images / styles are not script failures
+    if(e.filename && e.filename.indexOf('vendor/')>-1){ console.warn('Library error (charts only): '+e.message); return; }
+    show('Script error: '+(e.message||'unknown')+(e.filename?' ('+e.filename.split('/').pop()+', line '+e.lineno+')':''));
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){ show('Unexpected error: '+((e.reason&&e.reason.message)||e.reason)); });
+})();
+</script>
+<!-- Libraries are stored inside the repo, so no CDN can block them -->
+<script src="js/vendor/chart.umd.js?v=20260925c"></script>
+<script src="js/vendor/chartjs-plugin-datalabels.min.js?v=20260925c"></script>
+<!-- App code: settings → formats → calculations → charts → screens → buttons/boot -->
+<script src="js/config.js?v=20260925c"></script>
+<script src="js/format.js?v=20260925c"></script>
+<script src="js/data.js?v=20260925c"></script>
+<script src="js/vendor/supabase.js?v=20260925c"></script>
+<script src="js/cloud.js?v=20260925c"></script>
+<script src="js/charts.js?v=20260925c"></script>
+<script src="js/multi.js?v=20260925c"></script>
+<script src="js/render.js?v=20260925c"></script>
+<script src="js/customer-calc.js?v=20260925c"></script>
+<script src="js/vendor/india-map.js?v=20260925c"></script>
+<script src="js/customer-view.js?v=20260925c"></script>
+<script src="js/customer-map.js?v=20260925c"></script>
+<script src="js/interact.js?v=20260925c"></script>
+<script src="js/page-insights.js?v=20260925c"></script>
+<script src="js/scoring.js?v=20260925c"></script>
+<script src="js/app.js?v=20260925c"></script>
+<script>
+  document.getElementById('gateGoogle').addEventListener('click', ()=>signInGoogle());
+  document.getElementById('gateEmailBtn').addEventListener('click', ()=>signInEmail(document.getElementById('gateEmail').value));
+  document.getElementById('gateEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') signInEmail(e.target.value); });
+</script>
+</body>
+</html>
