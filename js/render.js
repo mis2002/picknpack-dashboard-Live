@@ -168,25 +168,30 @@ function safe(name, fn){
   }
 }
 function renderAll(){
+  // Only the visible tab is drawn (faster); switching tabs redraws that tab.
+  const on = t => typeof activeTab === 'undefined' || activeTab === t;
   safe('Header', renderPeriodDesc);
   safe('Summary card', renderMonthBanner);
-  safe('Weekly cards', renderWeekStrip);
-  safe('KPI tiles', renderKPIs);
-  safe('MIS Sales Report', renderMisReport);
-  safe('Growth table', renderGrowthTable);
-  safe('Sales trend', ()=>renderTrend(chartTypes.trend));
-  safe('Week-over-week', ()=>renderWow(chartTypes.wow));
-  safe('Order type split', ()=>renderSplit(chartTypes.split));
-  safe('Salesperson performance', ()=>renderSp(chartTypes.sp));
-  safe('Top customers', renderTable);
-  safe('BI Insights', renderBI);
-  safe('MIS Scoring', renderMisScoring);
-  safe('Customer insights', renderCustomerInsights);
-  safe('Customer map', renderCustomerMap);
-  safe('Main insights', renderMainInsights);
-  safe('BI insights', renderBIInsights);
-  safe('Scorecards', renderScoringV2);
-  safe('Scoring insights', renderScoringInsights);
+  if(on('main')){
+    safe('Weekly cards', renderWeekStrip);
+    safe('KPI tiles', renderKPIs);
+    safe('MIS Sales Report', renderMisReport);
+    safe('Growth table', renderGrowthTable);
+    safe('Sales trend', ()=>renderTrend(chartTypes.trend));
+    safe('Week-over-week', ()=>renderWow(chartTypes.wow));
+    safe('Order type split', ()=>renderSplit(chartTypes.split));
+    safe('Salesperson performance', ()=>renderSp(chartTypes.sp));
+    safe('Top customers', renderTable);
+    safe('Main insights', renderMainInsights);
+  }
+  if(on('bi')){ safe('BI Insights', renderBI); safe('BI insights', renderBIInsights); }
+  if(on('scoring')){ safe('MIS Scoring', renderMisScoring); safe('Scorecards', renderScoringV2); safe('Scoring insights', renderScoringInsights); }
+  if(on('customers')){
+    safe('Customer insights', renderCustomerInsights);
+    safe('Customer map', renderCustomerMap);
+    safe('Customer intelligence', ()=>mvEmbedOffline('ci', 'offCI'));
+    safe('Geographic performance', ()=>mvEmbedOffline('geo', 'offGeo'));
+  }
   safe('Clickable items', afterRenderAll);
 }
 

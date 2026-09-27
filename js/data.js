@@ -63,7 +63,14 @@ function applyLocation(rows){
 }
 /* Same name as before, so the rest of the dashboard is unchanged. Returns rows for the chosen location. */
 async function fetchSheetRows(forceFull){
-  const res = await loadInvoices(forceFull);
+  return buildRowsFrom(await loadInvoices(forceFull));
+}
+/* Instant first paint from the browser cache (null if nothing cached yet) */
+async function fetchCachedRows(){
+  const rows = await loadCachedInvoices();
+  return rows ? buildRowsFrom({ rows, downloaded: 0, full: false, cacheOk: true, fromCache: true }) : null;
+}
+function buildRowsFrom(res){
   const all = res.rows.map(toDashRow).filter(r => r.date && !isNaN(r.date));
   const active = all.filter(r => r.status !== 'VOID' && (r.net || r.total));
   RAW_ROWS = active;
@@ -72,7 +79,7 @@ async function fetchSheetRows(forceFull){
     sheetRows: res.rows.length, loaded: active.length,
     voided: all.filter(r => r.status === 'VOID').length,
     skippedNoDate: res.rows.length - all.length, skippedNoAmount: 0,
-    profitPending: pending, downloaded: res.downloaded, full: res.full, cacheOk: res.cacheOk,
+    profitPending: pending, downloaded: res.downloaded, full: res.full, cacheOk: res.cacheOk, fromCache: !!res.fromCache,
     locations: [...new Set(active.map(r => r.location))].sort(), missingColumns: []
   };
   return applyLocation(active);

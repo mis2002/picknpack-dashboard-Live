@@ -143,6 +143,7 @@ function buildCustomerModel(){
   // Segment each customer (value threshold = top 20% of lifetime sales)
   const vals = list.map(c=>c.life.net).sort((a,b)=>b-a);
   const top20 = vals.length ? vals[Math.max(0, Math.ceil(vals.length*0.2)-1)] : Infinity;
+  syncSegmentText();
   list.forEach(c=>{ c.segment = segmentOf(c, top20); });
 
   /* ---------- period-level views ---------- */
@@ -229,15 +230,18 @@ function buildCustomerModel(){
 function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
 
 function segmentOf(c, top20){
-  if(c.recency===null || c.recency > 90) return 'Lost';
-  if(c.daysSinceFirst !== null && c.daysSinceFirst <= 30) return 'New';
-  const overdueAfter = Math.max(30, (c.avgGap||0)*2);
+  const t = dashCfg().customer;                        // thresholds from Settings → Customer rules
+  if(c.recency===null || c.recency > t.inactiveDays) return 'Lost';
+  if(c.daysSinceFirst !== null && c.daysSinceFirst <= t.newDays) return 'New';
+  const overdueAfter = Math.max(t.atRiskMinDays, (c.avgGap||0)*t.atRiskMultiplier);
   if(c.orderDays >= 2 && c.recency > overdueAfter) return 'At risk';
-  if(c.orderDays >= 6 && c.recency <= 30 && c.life.net >= top20) return 'Champion';
-  if(c.orderDays >= 4 && c.recency <= 45) return 'Loyal';
-  if(c.recency <= 45) return 'Promising';
+  if(c.orderDays >= 6 && c.recency <= t.championDays && c.life.net >= top20) return 'Champion';
+  if(c.orderDays >= 4 && c.recency <= t.activeDays) return 'Loyal';
+  if(c.recency <= t.activeDays) return 'Promising';
   return 'Needs attention';
 }
+/* keep the segment descriptions in step with the thresholds */
+function syncSegmentText(){ if(typeof mvSegInfo !== 'function') return; Object.keys(SEGMENTS).forEach(s => { const i = mvSegInfo(s); if(i[0]){ SEGMENTS[s].desc = i[0]; SEGMENTS[s].action = i[1]; } }); }
 
 /* Plain-language insights generated from the model. Each only appears when the data supports it. */
 function buildCustomerInsights(M){

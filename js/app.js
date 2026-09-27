@@ -62,12 +62,8 @@ document.querySelectorAll('.sb-nav [data-tab]').forEach(btn=>{
     document.querySelectorAll('.sb-nav [data-tab]').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activeTab = btn.dataset.tab;
-    const TAB_IDS = { main:'mainTab', bi:'biTab', scoring:'scoringTab', customers:'customersTab', locations:'locationsTab' };
+    const TAB_IDS = { main:'mainTab', bi:'biTab', scoring:'scoringTab', customers:'customersTab' };
     Object.entries(TAB_IDS).forEach(([k,id])=>{ const el = document.getElementById(id); if(el) el.style.display = activeTab===k ? 'block':'none'; });
-    // All Locations has its own filters: hide the Delhi- Offline hero + filter bar there
-    document.getElementById('monthBanner').style.display = activeTab==='locations' ? 'none' : '';
-    document.getElementById('mainFilterbar').style.display = activeTab==='locations' ? 'none' : '';
-    if(activeTab==='locations'){ renderLocationsTab(); window.scrollTo({top:0, behavior:'smooth'}); return; }
     // charts drawn while their tab was hidden have 0 width — redraw so they size to the visible box
     if(ALL_ROWS.length) renderAll();
     window.scrollTo({top:0, behavior:'smooth'});
@@ -100,12 +96,7 @@ document.getElementById('modeToggle').querySelectorAll('button').forEach(btn=>{
   });
 });
 document.getElementById('spFilter').addEventListener('change', e=>{ state.salesperson = e.target.value; renderAll(); });
-/* All Locations tab (sales only, no salesperson / order type) */
-let MVO = null;
-function renderLocationsTab(){
-  if(!MVO) MVO = createMultiView(document.getElementById('mvRootOffline'), { id:'mvo', locations: CONFIG.LOCATIONS, defaultLocs: CONFIG.LOCATIONS, rows: ()=>RAW_ROWS });
-  MVO.render();
-}
+
 document.getElementById('weekFilter').addEventListener('change', e=>{ state.weekKey = +e.target.value; renderAll(); });
 document.getElementById('monthFilter').addEventListener('change', e=>{ state.monthKey = e.target.value; renderAll(); });
 document.getElementById('rangeStart').addEventListener('change', e=>{ state.rangeStart = e.target.value; renderAll(); });
@@ -140,7 +131,7 @@ document.getElementById('yearFilter').addEventListener('change', e=>{
   renderAll();
 });
 document.getElementById('refreshBtn').addEventListener('click', ()=>loadData(true));
-document.getElementById('logoutBtn').addEventListener('click', ()=>{ if(confirm('Logout karein?')) signOut(); });
+document.getElementById('logoutBtn').addEventListener('click', ()=>{ if(confirm('Log out?')) signOut(); });
 
 /* ---------------------- Save / restore filter view ---------------------- */
 const SAVED_VIEW_KEY = 'pnp_live_saved_view_v1';   // separate from the old dashboard's saved view
@@ -204,7 +195,19 @@ function showError(msg){
 }
 function hideError(){ document.getElementById('errBar').classList.remove('show'); }
 
-async function loadData(manual, forceFull){
+/* draw the dashboard from a set of Delhi- Offline rows */
+function applyRows(rows){
+    const meta = enrichAndIndex(rows);
+    ALL_ROWS = rows; WEEKS = meta.weeks; MONTHS = meta.months;
+    populateFilterOptions();
+    applyStateToUI();
+    hideError();
+    document.getElementById('loadingScreen').style.display='none';
+    document.getElementById('dashboardBody').style.display='block';
+    renderAll();
+    renderDataHealth();
+}
+async function loadData(manual, forceFull, quiet){
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('spinning');
   if(manual) setSyncStatus(true, 'Refreshing…');
@@ -212,6 +215,10 @@ async function loadData(manual, forceFull){
     if(!loadData._savedApplied){ loadSavedView(); loadData._savedApplied = true; }
     state.location = CONFIG.DEFAULT_LOCATION;            // this dashboard is always Delhi- Offline
     const rows = await fetchSheetRows(forceFull);
+    if(quiet && ALL_ROWS.length && !DATA_HEALTH.full && !DATA_HEALTH.downloaded){   // nothing changed since the cached view
+      setSyncStatus(true, `Live · ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`);
+      loadSyncInfo().then(renderSyncBadge); return;
+    }
     const meta = enrichAndIndex(rows);
     ALL_ROWS = rows; WEEKS = meta.weeks; MONTHS = meta.months;
     populateLocationOptions();
@@ -222,7 +229,6 @@ async function loadData(manual, forceFull){
     document.getElementById('dashboardBody').style.display='block';
     renderAll();
     renderDataHealth();
-    if(activeTab === 'locations') renderLocationsTab();
     setSyncStatus(true, `Live · ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` + (DATA_HEALTH.downloaded && !DATA_HEALTH.full ? ` · ${fmtNum(DATA_HEALTH.downloaded)} new` : ''));
     if(manual) showToast(DATA_HEALTH.full ? `Loaded ${fmtNum(RAW_ROWS.length)} invoices.` : (DATA_HEALTH.downloaded ? `${fmtNum(DATA_HEALTH.downloaded)} new or changed invoices.` : 'Already up to date.'));
     loadSyncInfo().then(renderSyncBadge);
@@ -249,11 +255,57 @@ window.addEventListener('resize', ()=>{
 
 /* ---------------------- Admin modal ---------------------- */
 function openAdminModal(){
-  if(!isAdminUser()){ showToast('Admin settings sirf Admin role ke liye hain.'); return; }
+  if(!isAdminUser()){ showToast('Settings are available to admins only.'); return; }
   document.getElementById('adminModalOverlay').style.display = 'flex';
   document.getElementById('adminSettingsStage').style.display = 'block';
   ADMIN_PENDING.logo = ADMIN.logo || ''; ADMIN_PENDING.photos = Object.assign({}, ADMIN.photos||{});
-  fillAdminForm(); renderLogoPreview(); renderScoringForm(); renderUsersAdmin(); renderDataAdmin();
+  fillAdminForm(); renderLogoPreview(); renderScoringForm(); renderUsersAdmin(); renderDataAdmin(); renderDashSettings();
+}
+/* Settings: dashboards, locations, customer rules, Q&A, display */
+function renderDashSettings(){
+  const d = dashCfg(), locs = allLocs();
+  document.getElementById('admDash').innerHTML = `
+    <div class="admin-field" style="max-width:320px"><label>Opening dashboard</label>
+      <select id="admDefaultDash">${locs.filter(l => l.enabled).map(l => `<option value="${l.code}" ${d.defaultDashboard === l.code ? 'selected' : ''}>${escAttr(l.name)}</option>`).join('')}<option value="summary" ${d.defaultDashboard === 'summary' ? 'selected' : ''}>Summary</option></select>
+      <span class="hint">The dashboard shown right after login.</span></div>
+    <div class="table-scroll" style="margin-top:10px"><table><thead><tr><th>Show</th><th>Location (from Zoho)</th><th>Display name</th><th>Order</th><th>Identify customers by</th></tr></thead><tbody>
+    ${locs.map(l => `<tr><td><input type="checkbox" data-dloc-on="${escAttr(l.key)}" ${l.enabled ? 'checked' : ''}></td><td class="name">${escAttr(l.key)}${l.key === 'Karnataka' ? ' <span class="muted">(not started)</span>' : ''}</td>
+      <td><input data-dloc-name="${escAttr(l.key)}" value="${escAttr(l.name)}" style="width:150px"></td><td><input type="number" data-dloc-order="${escAttr(l.key)}" value="${l.order || 0}" style="width:64px"></td>
+      <td><select data-dloc-id="${escAttr(l.key)}"><option value="name" ${l.idMode !== 'phone' ? 'selected' : ''}>Customer name</option><option value="phone" ${l.idMode === 'phone' ? 'selected' : ''}>Mobile number in the name</option></select></td></tr>`).join('')}
+    </tbody></table></div>
+    <span class="hint">Hidden locations disappear from the navigation, the Summary and Ask; their data is kept. "Mobile number" treats every order with the same 10-digit mobile as one customer (used for Delhi Online).</span>`;
+  const c = d.customer, f = (k, label, hint) => `<div class="admin-field"><label>${label}</label><input type="number" min="1" step="1" data-dcust="${k}" value="${c[k]}"><span class="hint">${hint}</span></div>`;
+  document.getElementById('admCust').innerHTML = `<div class="admin-grid" style="padding:0">
+    ${f('newDays', 'New customer (days)', 'First ever order within this many days')}
+    ${f('activeDays', 'Active customer (days)', 'Ordered within this many days')}
+    ${f('championDays', 'Champion recency (days)', 'Champions must have ordered within this many days')}
+    ${f('atRiskMultiplier', 'At risk: times their usual gap', 'Overdue when silent for this many × their normal reorder gap')}
+    ${f('atRiskMinDays', 'At risk: minimum days', 'Never flag as at risk before this many days')}
+    ${f('inactiveDays', 'Inactive after (days)', 'No order for this many days = inactive')}</div>`;
+  document.getElementById('admQa').innerHTML = `
+    <div class="checkbox-row"><input type="checkbox" id="admQaOn" ${d.qa.enabled ? 'checked' : ''}><label for="admQaOn">Show the Ask button on every dashboard</label></div>
+    <div class="admin-field" style="max-width:420px"><label>Answer engine</label><select id="admQaProvider"><option value="builtin" selected>Built-in (runs in the browser; no data leaves the dashboard)</option></select>
+      <span class="hint">An external AI provider can be added here later without changing the dashboards.</span></div>
+    <div class="admin-field"><label>Suggested questions (one per line)</label><textarea id="admQaQs" rows="6" style="width:100%;font:inherit">${escAttr(d.qa.questions.join('\n'))}</textarea></div>`;
+  document.getElementById('admDensity').value = d.ui.density || 'comfortable';
+}
+function collectDashSettings(){
+  const d = JSON.parse(JSON.stringify(dashCfg()));
+  d.defaultDashboard = document.getElementById('admDefaultDash').value;
+  d.locations = d.locations.map(l => Object.assign(l, {
+    enabled: document.querySelector(`[data-dloc-on="${CSS.escape(l.key)}"]`).checked,
+    name: document.querySelector(`[data-dloc-name="${CSS.escape(l.key)}"]`).value.trim() || l.key,
+    order: +document.querySelector(`[data-dloc-order="${CSS.escape(l.key)}"]`).value || 0,
+    idMode: document.querySelector(`[data-dloc-id="${CSS.escape(l.key)}"]`).value }));
+  if(!d.locations.some(l => l.enabled)) throw new Error('At least one location must stay visible.');
+  document.querySelectorAll('[data-dcust]').forEach(i => { d.customer[i.dataset.dcust] = Math.max(1, +i.value || DEFAULT_ADMIN_SETTINGS.dash.customer[i.dataset.dcust]); });
+  d.qa.enabled = document.getElementById('admQaOn').checked;
+  d.qa.provider = document.getElementById('admQaProvider').value;
+  d.qa.questions = document.getElementById('admQaQs').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 20);
+  d.ui.density = document.getElementById('admDensity').value;
+  const def = d.locations.find(l => l.code === d.defaultDashboard);
+  if(d.defaultDashboard !== 'summary' && (!def || !def.enabled)) d.defaultDashboard = 'offline';
+  return d;
 }
 function closeAdminModal(){ document.getElementById('adminModalOverlay').style.display = 'none'; }
 function fillAdminForm(){
@@ -365,21 +417,21 @@ async function renderUsersAdmin(){
         <td class="muted">${u.added_at ? new Date(u.added_at).toLocaleDateString('en-GB') : ''}</td>
         <td>${u.email==='mis2@picknpack.co' || u.email===CURRENT_USER.email ? '' : `<button type="button" class="link-btn" data-user-del="${escAttr(u.email)}">Remove</button>`}</td></tr>`).join('') +
       `</tbody></table>`;
-  }catch(e){ box.innerHTML = `<div class="dept-note">Users load nahi hue: ${escAttr(e.message)}</div>`; }
+  }catch(e){ box.innerHTML = `<div class="dept-note">Could not load users: ${escAttr(e.message)}</div>`; }
 }
 document.getElementById('admUserAddBtn').addEventListener('click', async ()=>{
   const email = document.getElementById('admUserEmail').value, role = document.getElementById('admUserRole').value;
-  try{ await addUser(email, role); document.getElementById('admUserEmail').value = ''; showToast('User joda gaya ✓ — woh ab login kar sakta hai'); renderUsersAdmin(); }
+  try{ await addUser(email, role); document.getElementById('admUserEmail').value = ''; showToast('User added ✓ — they can log in now'); renderUsersAdmin(); }
   catch(e){ alert(e.message); }
 });
 document.getElementById('admUsers').addEventListener('change', async e=>{
   const s = e.target.closest('[data-user-role]'); if(!s) return;
-  try{ await addUser(s.dataset.userRole, s.value); showToast('Role badla ✓'); }catch(err){ alert(err.message); renderUsersAdmin(); }
+  try{ await addUser(s.dataset.userRole, s.value); showToast('Role updated ✓'); }catch(err){ alert(err.message); renderUsersAdmin(); }
 });
 document.getElementById('admUsers').addEventListener('click', async e=>{
   const b = e.target.closest('[data-user-del]'); if(!b) return;
-  if(!confirm('Remove ' + b.dataset.userDel + '? Unka access band ho jayega.')) return;
-  try{ await removeUser(b.dataset.userDel); showToast('User hataya ✓'); renderUsersAdmin(); }catch(err){ alert(err.message); }
+  if(!confirm('Remove ' + b.dataset.userDel + '? They will lose access immediately.')) return;
+  try{ await removeUser(b.dataset.userDel); showToast('User removed ✓'); renderUsersAdmin(); }catch(err){ alert(err.message); }
 });
 /* ---- Admin → Data ---- */
 function renderDataAdmin(){
@@ -401,9 +453,9 @@ document.getElementById('admReloadAll').addEventListener('click', async ()=>{
 });
 document.getElementById('admImportOld').addEventListener('click', async ()=>{
   const old = oldDashboardSettings(); if(!old) return;
-  if(!confirm('Purane dashboard ki settings (is browser me saved: salary, department, targets, photos, logo, scoring) yahan copy karein? Purana dashboard nahi badlega.')) return;
+  if(!confirm('Copy the old dashboard settings saved in this browser (salaries, departments, targets, photos, logo, scoring) into this dashboard? The old dashboard is not changed.')) return;
   const copy = Object.assign({}, old); delete copy.sheetId; delete copy.gid;
-  try{ await saveSharedSettings(mergeSettings(copy)); showToast('Settings copy ho gayi ✓'); setTimeout(()=>location.reload(), 600); }catch(e){ alert(e.message); }
+  try{ await saveSharedSettings(mergeSettings(copy)); showToast('Settings copied ✓'); setTimeout(()=>location.reload(), 600); }catch(e){ alert(e.message); }
 });
 document.getElementById('adminBtn').addEventListener('click', openAdminModal);
 document.getElementById('adminModalClose').addEventListener('click', closeAdminModal);
@@ -438,9 +490,11 @@ document.getElementById('adminSaveBtn').addEventListener('click', ()=>{
     visiblePanels, salaries, departments, crTargets, hiddenFromMis,
     custTargets, scoring, logo: ADMIN_PENDING.logo, photos: ADMIN_PENDING.photos
   };
+  try{ updated.dash = collectDashSettings(); }catch(e){ alert(e.message); return; }
+  sessionStorage.removeItem('pnp_live_opened');
   const btn = document.getElementById('adminSaveBtn'); btn.disabled = true; btn.textContent = 'Saving…';
-  saveSharedSettings(updated).then(()=>{ showToast('Saved ✓ — sab users ko same settings dikhengi'); setTimeout(()=>location.reload(), 600); })
-    .catch(e=>{ btn.disabled = false; btn.textContent = 'Save and reload'; alert('Save nahi hua: ' + e.message); });
+  saveSharedSettings(updated).then(()=>{ showToast('Saved ✓ — all users now see these settings'); setTimeout(()=>location.reload(), 600); })
+    .catch(e=>{ btn.disabled = false; btn.textContent = 'Save and reload'; alert('Could not save: ' + e.message); });
 });
 document.getElementById('adminDefaultsBtn').addEventListener('click', ()=>{
   if(confirm('Restore all admin settings to factory defaults for EVERYONE? Salaries, targets and photos will be cleared.')){
@@ -534,8 +588,29 @@ async function startDashboard(){
     document.getElementById('avatarBadge').textContent = CURRENT_USER.email.slice(0, 2).toUpperCase();
     document.getElementById('avatarBadge').title = CURRENT_USER.email + ' (' + CURRENT_USER.role + ')';
     document.getElementById('adminBtn').style.display = isAdminUser() ? '' : 'none';
-    try { ADMIN = await loadSharedSettings(); } catch(e){ console.warn('settings', e); showToast('Shared settings load nahi hui — pichhli copy use ho rahi hai.'); }
-    applyBranding(); applyPanelVisibility();
+    // settings and the cached invoices load at the same time
+    const [settings, cached] = await Promise.all([
+      loadSharedSettings().catch(e => { console.warn('settings', e); showToast('Could not load shared settings — using the last saved copy.'); return null; }),
+      fetchCachedRows().catch(() => null)
+    ]);
+    if(settings) ADMIN = settings;
+    applyBranding(); applyPanelVisibility(); navRender(); QA_PAGE_LOCS = ['Delhi- Offline'];
+    const dflt = dashCfg().defaultDashboard, dl = locByCode(dflt);
+    if(dflt && dflt !== 'offline' && !sessionStorage.getItem('pnp_live_opened') && !location.hash){
+      sessionStorage.setItem('pnp_live_opened', '1');
+      const target = dflt === 'summary' ? 'summary.html' : (dl && dl.enabled ? dl.page : null);
+      if(target){ location.replace(target); return; }
+    }
+    sessionStorage.setItem('pnp_live_opened', '1');
+    if(cached){                                          // instant first paint from the browser cache
+      if(!loadData._savedApplied){ loadSavedView(); loadData._savedApplied = true; }
+      state.location = CONFIG.DEFAULT_LOCATION;
+      applyRows(cached);
+      setSyncStatus(true, 'Checking for new invoices…');
+    }
+    const hashTab = (location.hash || '').replace('#', '');
+    if(hashTab === 'settings' && isAdminUser()) setTimeout(openAdminModal, 300);
+    else if(['main','bi','scoring','customers'].indexOf(hashTab) >= 0){ const b = document.querySelector(`.sb-nav [data-tab="${hashTab}"]`); if(b) setTimeout(()=>b.click(), 50); }
     // Watchdog: never spin forever
     const wd = setTimeout(()=>{
       if(!ALL_ROWS.length && document.getElementById('loadingScreen').style.display !== 'none'){
@@ -544,7 +619,7 @@ async function startDashboard(){
         showError('Supabase did not respond within 40 seconds. Check your internet and press Refresh.');
       }
     }, 40000);
-    await loadData(false);
+    await loadData(false, false, !!cached);
     clearTimeout(wd);
     if(refreshTimer) clearInterval(refreshTimer);
     if(ADMIN.autoRefresh){

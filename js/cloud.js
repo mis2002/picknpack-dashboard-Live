@@ -47,13 +47,13 @@ function hideGate(){ document.getElementById('loginGate').style.display = 'none'
 
 async function signInGoogle(){
   const { error } = await cloudReady().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: siteUrl() } });
-  if(error) showGate('login', 'Google login nahi hua: ' + error.message + ' (Supabase me Google provider chalu hai?)');
+  if(error) showGate('login', 'Google sign-in failed: ' + error.message + ' (is the Google provider enabled in Supabase?)');
 }
 async function signInEmail(email){
   email = String(email || '').trim().toLowerCase();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showGate('login', 'Sahi email daalein.'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showGate('login', 'Please enter a valid email address.'); return; }
   const { error } = await cloudReady().auth.signInWithOtp({ email, options: { emailRedirectTo: siteUrl() } });
-  if(error){ showGate('login', 'Login link nahi gaya: ' + error.message); return; }
+  if(error){ showGate('login', 'Could not send the login link: ' + error.message); return; }
   showGate('sent', email);
 }
 async function signOut(){
@@ -126,6 +126,33 @@ async function serverCount(){
   if(error) throw new Error('Supabase: ' + error.message);
   return count || 0;
 }
+/* First download: all pages in parallel (4 at a time) instead of one by one */
+async function fetchAllParallel(count){
+  const sb = cloudReady(), page = 1000, pages = Math.max(1, Math.ceil((count || 0) / page));
+  const out = new Array(pages); let next = 0;
+  const worker = async () => {
+    while(next < pages){
+      const p = next++;
+      const { data, error } = await sb.from('invoices').select(INVOICE_COLS).order('invoice_no', { ascending: true }).range(p * page, p * page + page - 1);
+      if(error) throw new Error('Supabase: ' + error.message);
+      out[p] = data || [];
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  const m = new Map(); out.forEach(a => (a || []).forEach(r => m.set(r.invoice_no, r)));
+  // rows added while downloading may sit past the last page — pick them up
+  if(m.size < count){ (await fetchChanged(newestOf([...m.values()]))).forEach(r => m.set(r.invoice_no, r)); }
+  return [...m.values()];
+}
+/* Rows saved in this browser from the last visit (instant first paint), or null */
+async function loadCachedInvoices(){
+  try{
+    const since = await idbGetMeta('since');
+    if(typeof since !== 'string' || !/^\d{4}-/.test(since)) return null;
+    const rows = await idbAll();
+    return rows && rows.length ? rows : null;
+  }catch(e){ return null; }
+}
 const newestOf = (rows, start) => rows.reduce((m, r) => (r.updated_at && (!m || r.updated_at > m)) ? r.updated_at : m, start || null);
 
 /* Downloads only what changed since the last visit; full download the first time (or after deletes) */
@@ -140,12 +167,13 @@ async function loadInvoices(forceFull){
     }
     catch(e){ cacheOk = false; cache = new Map(); since = null; }
   }
-  const changed = await fetchChanged(since);
+  let changed = [], count;
+  if(since){ [changed, count] = await Promise.all([fetchChanged(since), serverCount()]); }   // both requests at the same time
+  else { count = await serverCount(); changed = await fetchAllParallel(count); }
   changed.forEach(r => cache.set(r.invoice_no, r));
   let newest = newestOf(changed, since), full = !since, downloaded = changed.length;
-  const count = await serverCount();
   if(count !== cache.size){                                  // rows were deleted on the server → start clean
-    cache = new Map(); const all = await fetchChanged(null);
+    cache = new Map(); const all = await fetchAllParallel(count);
     all.forEach(r => cache.set(r.invoice_no, r)); newest = newestOf(all); full = true; downloaded = all.length;
     if(cacheOk){ try{ await idbClear(); await idbPut(all); }catch(e){ cacheOk = false; } }
   } else if(cacheOk && (changed.length || !since)){
@@ -191,6 +219,7 @@ function mergeSettings(v){
   const d = DEFAULT_ADMIN_SETTINGS.scoring, g = s.scoring || {};
   s.scoring = Object.assign({}, d, g, { wNbd: Object.assign({}, d.wNbd, g.wNbd), wCrr: Object.assign({}, d.wCrr, g.wCrr) });
   s.photos = s.photos || {}; s.custTargets = s.custTargets || {};
+  s.dash = mergeDash(s.dash);
   return s;
 }
 async function loadSharedSettings(){
@@ -204,7 +233,7 @@ async function loadSharedSettings(){
 async function saveSharedSettings(value){
   const clean = Object.assign({}, value); delete clean._fromCloud; delete clean._updatedBy; delete clean._updatedAt;
   const { error } = await cloudReady().from('settings').upsert({ key: 'admin', value: clean, updated_at: new Date().toISOString(), updated_by: CURRENT_USER.email }, { onConflict: 'key' });
-  if(error) throw new Error(error.message.indexOf('row-level security') >= 0 ? 'Sirf Admin settings save kar sakta hai.' : error.message);
+  if(error) throw new Error(error.message.indexOf('row-level security') >= 0 ? 'Only admins can save settings.' : error.message);
   try{ localStorage.setItem(LIVE_KEYS.settingsCache, JSON.stringify(clean)); }catch(e){}
 }
 /* Settings of the OLD dashboard in this browser (read only — never changed) */
@@ -219,9 +248,9 @@ async function listUsers(){
 }
 async function addUser(email, role){
   email = String(email || '').trim().toLowerCase();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Sahi email daalein.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Please enter a valid email address.');
   const { error } = await cloudReady().from('app_users').upsert({ email, role: role === 'admin' ? 'admin' : 'viewer', added_by: CURRENT_USER.email }, { onConflict: 'email' });
-  if(error) throw new Error(error.message.indexOf('row-level security') >= 0 ? 'Sirf Admin users jod sakta hai (owner ka role badla nahi ja sakta).' : error.message);
+  if(error) throw new Error(error.message.indexOf('row-level security') >= 0 ? 'Only admins can add users (the owner\'s role cannot be changed).' : error.message);
 }
 async function removeUser(email){
   const { error } = await cloudReady().from('app_users').delete().eq('email', email);
