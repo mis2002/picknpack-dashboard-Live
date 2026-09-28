@@ -14,8 +14,8 @@ function pError(msg){ const b = document.getElementById('errBar'); b.innerHTML =
 function pBranding(){
   document.getElementById('brandLabel').textContent = ADMIN.brandName || 'PICK N PACK';
   const logo = document.getElementById('brandLogo'), icon = document.getElementById('sbLogo');
-  logo.onload = () => logo.style.display = ''; logo.onerror = () => logo.style.display = 'none'; logo.src = ADMIN.logo || 'assets/logo.png?v=20260930';
-  icon.onload = () => { icon.style.display = ''; document.querySelector('.sb-brand').style.display = 'none'; }; icon.onerror = () => icon.style.display = 'none'; icon.src = 'assets/logo-icon.png?v=20260930';
+  logo.onload = () => logo.style.display = ''; logo.onerror = () => logo.style.display = 'none'; logo.src = ADMIN.logo || 'assets/logo.png?v=20261001';
+  icon.onload = () => { icon.style.display = ''; document.querySelector('.sb-brand').style.display = 'none'; }; icon.onerror = () => icon.style.display = 'none'; icon.src = 'assets/logo-icon.png?v=20261001';
 }
 function pConfig(){
   if(PAGE === 'summary'){

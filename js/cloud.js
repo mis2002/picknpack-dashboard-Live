@@ -97,6 +97,17 @@ async function setUserPerms(email, perms){
   const { error } = await cloudReady().from('app_users').update({ perms: normPerms(perms) }).eq('email', email);
   if(error) throw new Error(/perms/.test(error.message) ? 'Run hrms-setup.sql in Supabase first (it adds user rights).' : error.message);
 }
+/* ---------------- public settings (read by the candidate test page too) ---------------- */
+async function getAccessToken(){ const { data } = await cloudReady().auth.getSession(); return (data && data.session && data.session.access_token) || ''; }
+async function getPublicSetting(key){
+  const { data, error } = await cloudReady().from('public_settings').select('value').eq('key', key).maybeSingle();
+  if(error) throw new Error(/public_settings/.test(error.message) ? 'Run hrms-setup.sql in Supabase first.' : error.message);
+  return (data && data.value) || {};
+}
+async function setPublicSetting(key, value){
+  const { error } = await cloudReady().from('public_settings').upsert({ key, value, updated_at: new Date().toISOString(), updated_by: CURRENT_USER.email }, { onConflict: 'key' });
+  if(error) throw new Error(/row-level security/.test(error.message) ? 'Only admins can change this.' : error.message);
+}
 /* ---------------- HRMS data ---------------- */
 async function hrmsSelectAll(table, cols, order){
   const sb = cloudReady(); let out = [], from = 0;

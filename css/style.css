@@ -642,3 +642,47 @@
   .perm-box input{accent-color:var(--violet);width:15px;height:15px;}
   .hr-status{border:1.5px solid var(--c);color:var(--c);background:color-mix(in srgb, var(--c) 10%, #fff);border-radius:999px;padding:4px 8px;font:700 11.5px var(--font);cursor:pointer;}
   .mv-filterbar select{min-width:150px;}
+
+  /* ---------- HRMS: Tests & links, Question bank ---------- */
+  .hr-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;}
+  .hr-head p{margin:0;max-width:640px;}
+  .hr-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px;margin-bottom:18px;}
+  .hr-test{position:relative;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 18px 14px;box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .15s, transform .15s;}
+  .hr-test:hover{transform:translateY(-2px);box-shadow:0 20px 36px -22px rgba(47,42,122,.5);}
+  .hr-test.off{opacity:.72;}
+  .hr-tape{position:absolute;left:0;right:0;top:0;height:8px;background:var(--c);}
+  .hr-test-top{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:600;}
+  .hr-test h3{margin:4px 0 2px;font-size:18px;line-height:1.3;}
+  .hr-desc{font-size:12.5px;margin:2px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .hr-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px;}
+  .hr-chips span{background:var(--card-2,#F4F2FC);border-radius:9px;padding:4px 9px;font-size:11.5px;font-weight:600;}
+  .hr-miss{color:#B45309;font-size:12px;font-weight:600;margin:6px 0 0;}
+  .hr-link{display:flex;gap:6px;align-items:center;margin:12px 0 10px;}
+  .hr-link input{flex:1;min-width:0;border:1.5px dashed var(--c);border-radius:10px;padding:7px 9px;font:500 11.5px var(--font);color:var(--ink);background:color-mix(in srgb, var(--c) 6%, #fff);}
+  .hr-link .util-btn{text-decoration:none;white-space:nowrap;}
+  .hr-test-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px;font-size:11.5px;}
+  .hr-test-foot .link-btn{margin-left:6px;}
+  .link-btn.danger{color:var(--coral);}
+  .hr-switch{display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--ink-dim);}
+  .hr-switch input{display:none;}
+  .hr-switch span{width:34px;height:19px;border-radius:999px;background:#D7D4EA;position:relative;transition:background .15s;}
+  .hr-switch span::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .hr-switch input:checked + span{background:var(--good);} .hr-switch input:checked + span::after{left:17px;}
+  .hr-colors{display:flex;gap:8px;flex-wrap:wrap;padding:6px 0;}
+  .hr-colors button{width:28px;height:28px;border-radius:50%;border:none;cursor:pointer;outline-offset:2px;}
+  .hr-colors button.on{outline:2.5px solid var(--ink);}
+  .hr-toggle{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;}
+  .hr-toggle input{margin-top:3px;accent-color:var(--violet);width:16px;height:16px;}
+  .hr-toggle b{display:block;font-size:13px;} .hr-toggle em{font-style:normal;font-size:11.5px;color:var(--ink-dim);}
+  .hr-qlist{display:flex;flex-direction:column;gap:8px;}
+  .hr-q{display:grid;grid-template-columns:34px 1fr auto;gap:12px;border:1px solid var(--line);border-radius:16px;padding:12px 14px;align-items:start;}
+  .hr-q:hover{border-color:#CFCAEE;}
+  .hr-qn{width:30px;height:30px;border-radius:10px;background:var(--violet-soft);color:var(--indigo);display:grid;place-items:center;font-weight:800;font-size:12.5px;}
+  .hr-qt{font-weight:600;font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
+  .hr-qo{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .hr-qo span{border:1px solid var(--line);border-radius:10px;padding:4px 9px;font-size:12px;}
+  .hr-qo span b{color:var(--ink-dim);margin-right:3px;}
+  .hr-qo span.ok{border-color:var(--good);background:#E8F8F2;color:#117A5B;font-weight:600;} .hr-qo span.ok b{color:#117A5B;}
+  .hr-small{font-size:12px;margin:6px 0 0;}
+  .hr-qa{display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
+  .hr-steps{margin:0;padding-left:18px;line-height:1.8;font-size:13px;}
