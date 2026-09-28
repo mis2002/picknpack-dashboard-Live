@@ -611,10 +611,10 @@
 
   /* ---------- loading skeleton ---------- */
   .skeleton-screen{display:none;flex-direction:column;gap:14px;align-items:stretch !important;}
-  .sk-hero,.sk-card,.sk-panel{background:linear-gradient(90deg,#E9E6F7 25%,#F4F2FC 50%,#E9E6F7 75%);background-size:200% 100%;animation:sk 1.3s infinite linear;border-radius:22px;}
-  .sk-hero{height:130px;} .sk-panel{height:260px;}
-  .sk-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;} .sk-card{height:96px;}
-  .sk-note{text-align:center;color:var(--ink-dim);font-size:13px;margin:4px 0 0;}
+  .skl-hero,.skl-card,.skl-panel{background:linear-gradient(90deg,#E9E6F7 25%,#F4F2FC 50%,#E9E6F7 75%);background-size:200% 100%;animation:sk 1.3s infinite linear;border-radius:22px;}
+  .skl-hero{height:130px;} .skl-panel{height:260px;}
+  .skl-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;} .skl-card{height:96px;}
+  .skl-note{text-align:center;color:var(--ink-dim);font-size:13px;margin:4px 0 0;}
   @keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
 
   /* ---------- compact density (Settings → UI) ---------- */
@@ -627,3 +627,14 @@
   @media (max-width:700px){ .dash-nav{border-radius:14px;} .dn-link{padding:8px 11px;font-size:12px;} .qa-fab{right:14px;bottom:14px;} }
 
   .loading-screen.skeleton-screen{padding:0 0 20px;}
+
+  /* ---------- interaction polish ---------- */
+  .kpi.clickable{cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;}
+  .kpi.clickable:hover{transform:translateY(-3px);box-shadow:0 16px 30px -18px rgba(47,42,122,.45);}
+  .kpi.clickable::after{content:'View →';position:absolute;right:14px;bottom:10px;font-size:10.5px;font-weight:700;color:var(--violet);opacity:0;transition:opacity .15s;}
+  .kpi.clickable:hover::after{opacity:1;}
+  .kpi{position:relative;}
+  .mv-gran button{padding:5px 10px;font-size:11.5px;}
+  .insight.clickable{cursor:pointer;transition:transform .15s;} .insight.clickable:hover{transform:translateY(-2px);}
+  .mv-loc:hover{box-shadow:0 18px 32px -20px rgba(47,42,122,.5);}
+  tr.clickable:hover td{background:var(--violet-soft);}

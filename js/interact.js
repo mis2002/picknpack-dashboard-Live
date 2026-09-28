@@ -349,6 +349,7 @@ function afterRenderAll(){
       ['Invoices of the top 10 customers', cur.filter(r=>top10.has(r.customer))], null
     ];
     [...document.getElementById('custKpis').children].forEach((el,i)=>{
+      if(i >= cd.length) return;                         // extra tiles carry their own drill
       el.classList.add('clickable');
       if(cd[i]) el.dataset.drill = registerDrill(cd[i][0], cd[i][1]);
       else el.dataset.seg = 'At risk';

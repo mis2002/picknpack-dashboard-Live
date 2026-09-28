@@ -189,9 +189,9 @@ function renderAll(){
   if(on('customers')){
     safe('Customer insights', renderCustomerInsights);
     safe('Customer map', renderCustomerMap);
-    safe('Customer intelligence', ()=>mvEmbedOffline('ci', 'offCI'));
-    safe('Geographic performance', ()=>mvEmbedOffline('geo', 'offGeo'));
+    safe('Customer lists', ()=>mvEmbedOffline('ci', 'offCI'));
   }
+  if(on('forecast')) safe('Forecast', ()=>mvEmbedOffline('fc', 'offFC'));
   safe('Clickable items', afterRenderAll);
 }
 

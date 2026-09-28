@@ -8,12 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260926">
+<link rel="stylesheet" href="css/style.css?v=20260928">
 </head>
 <body data-page="online">
 <div class="login-gate" id="loginGate" style="display:none">
   <div class="gate-card">
-    <img src="assets/logo.png?v=20260926" alt="PicknPack" class="gate-logo" onerror="this.style.display='none'">
+    <img src="assets/logo.png?v=20260928" alt="PicknPack" class="gate-logo" onerror="this.style.display='none'">
     <div id="gateLogin">
       <h2>Sales Dashboard</h2>
       <p class="gate-sub">Sign in to continue. Access is limited to approved email addresses.</p>
@@ -56,6 +56,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
         <span>Geography</span>
       </button>
+      <button class="sb-item" data-stab="forecast" title="Forecast">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <span>Forecast</span>
+      </button>
     </nav>
   </aside>
   <main class="main">
@@ -83,10 +87,10 @@
     </header>
     <div class="errbar" id="errBar"></div>
     <div class="loading-screen skeleton-screen" id="loadingScreen">
-      <div class="sk-hero"></div>
-      <div class="sk-row"><div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div></div>
-      <div class="sk-panel"></div>
-      <p class="sk-note">Loading your sales data…</p>
+      <div class="skl-hero"></div>
+      <div class="skl-row"><div class="skl-card"></div><div class="skl-card"></div><div class="skl-card"></div><div class="skl-card"></div></div>
+      <div class="skl-panel"></div>
+      <p class="skl-note">Loading your sales data…</p>
     </div>
     <div id="dashboardBody" style="display:none">
       <section class="hero">
@@ -108,21 +112,21 @@
   </main>
 </div>
 
-<script src="js/vendor/chart.umd.js?v=20260926"></script>
-<script src="js/vendor/chartjs-plugin-datalabels.min.js?v=20260926"></script>
-<script src="js/config.js?v=20260926"></script>
-<script src="js/dash-config.js?v=20260926"></script>
-<script src="js/format.js?v=20260926"></script>
-<script src="js/data.js?v=20260926"></script>
-<script src="js/vendor/supabase.js?v=20260926"></script>
-<script src="js/cloud.js?v=20260926"></script>
-<script src="js/charts.js?v=20260926"></script>
-<script src="js/vendor/india-map.js?v=20260926"></script>
-<script src="js/customer-map.js?v=20260926"></script>
-<script src="js/multi.js?v=20260926"></script>
-<script src="js/qa.js?v=20260926"></script>
-<script src="js/nav.js?v=20260926"></script>
-<script src="js/page.js?v=20260926"></script>
+<script src="js/vendor/chart.umd.js?v=20260928"></script>
+<script src="js/vendor/chartjs-plugin-datalabels.min.js?v=20260928"></script>
+<script src="js/config.js?v=20260928"></script>
+<script src="js/dash-config.js?v=20260928"></script>
+<script src="js/format.js?v=20260928"></script>
+<script src="js/data.js?v=20260928"></script>
+<script src="js/vendor/supabase.js?v=20260928"></script>
+<script src="js/cloud.js?v=20260928"></script>
+<script src="js/charts.js?v=20260928"></script>
+<script src="js/vendor/india-map.js?v=20260928"></script>
+<script src="js/customer-map.js?v=20260928"></script>
+<script src="js/multi.js?v=20260928"></script>
+<script src="js/qa.js?v=20260928"></script>
+<script src="js/nav.js?v=20260928"></script>
+<script src="js/page.js?v=20260928"></script>
 <script>
   document.getElementById('gateGoogle').addEventListener('click', ()=>signInGoogle());
   document.getElementById('gateEmailBtn').addEventListener('click', ()=>signInEmail(document.getElementById('gateEmail').value));

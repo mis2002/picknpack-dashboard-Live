@@ -51,11 +51,13 @@ function project(lat, lng){
 }
 const mixColor = t => { const a=[238,235,255], b=[68,58,168]; return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`; };
 
+/* Other pages (Delhi Online, Gujarat, Summary) set MAP_ROWS to hand in their rows; Delhi Offline uses currentRows() */
+let MAP_ROWS = null;
 function renderCustomerMap(){
   const M = window.INDIA_MAP, host = document.getElementById('mapSvgHost');
   if(!M || !host) return;
   if(!MAPV.vb) MAPV.vb = [0, 0, M.w, M.h];
-  const cur = currentRows();
+  const cur = MAP_ROWS ? MAP_ROWS() : currentRows();
 
   // ---- aggregate by state
   const st = {};
@@ -149,9 +151,12 @@ function svgPoint(evt){
   const s = Math.min(r.width/w, r.height/h), ox = (r.width - w*s)/2, oy = (r.height - h*s)/2;
   return [x + (evt.clientX - r.left - ox)/s, y + (evt.clientY - r.top - oy)/s, s];
 }
-(function wireMap(){
+let MAP_DRAG = null, MAP_MOVED = false, MAP_WIN_WIRED = false;
+function wireMap(){
   const box = document.getElementById('mapBox'), tip = document.getElementById('mapTip');
-  if(!box) return;
+  if(!box || box.dataset.wired) return;          // safe to call after every redraw
+  box.dataset.wired = '1';
+  document.querySelectorAll('#mapModeToggle button').forEach(x=>x.classList.toggle('active', x.dataset.m === (MAPV.mode || 'both')));
   document.getElementById('mapZoomIn').addEventListener('click', ()=>zoomAt(1.5));
   document.getElementById('mapZoomOut').addEventListener('click', ()=>zoomAt(1/1.5));
   document.getElementById('mapReset').addEventListener('click', ()=>{ const M = window.INDIA_MAP; setViewBox([0,0,M.w,M.h]); });
@@ -161,25 +166,26 @@ function svgPoint(evt){
     renderCustomerMap();
   }));
   box.addEventListener('wheel', e=>{ e.preventDefault(); const [px,py] = svgPoint(e); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, px, py); }, { passive:false });
-  let drag = null, moved = false;
-  box.addEventListener('pointerdown', e=>{ if(e.target.closest('.map-ctrl')) return; drag = { x:e.clientX, y:e.clientY, vb:MAPV.vb.slice(), s:svgPoint(e)[2] }; moved = false; });
-  window.addEventListener('pointermove', e=>{
-    if(drag){
+  box.addEventListener('pointerdown', e=>{ if(e.target.closest('.map-ctrl')) return; MAP_DRAG = { x:e.clientX, y:e.clientY, vb:MAPV.vb.slice(), s:svgPoint(e)[2] }; MAP_MOVED = false; });
+  if(!MAP_WIN_WIRED){
+    MAP_WIN_WIRED = true;
+    window.addEventListener('pointermove', e=>{
+      const drag = MAP_DRAG; if(!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      if(Math.abs(dx)+Math.abs(dy) > 4){ moved = true; document.querySelector('#mapSvgHost svg')?.classList.add('dragging'); }
-      if(moved) setViewBox([drag.vb[0] - dx/drag.s, drag.vb[1] - dy/drag.s, drag.vb[2], drag.vb[3]]);
-    }
-  });
-  window.addEventListener('pointerup', ()=>{ drag = null; document.querySelector('#mapSvgHost svg')?.classList.remove('dragging'); });
+      if(Math.abs(dx)+Math.abs(dy) > 4){ MAP_MOVED = true; document.querySelector('#mapSvgHost svg')?.classList.add('dragging'); }
+      if(MAP_MOVED) setViewBox([drag.vb[0] - dx/drag.s, drag.vb[1] - dy/drag.s, drag.vb[2], drag.vb[3]]);
+    });
+    window.addEventListener('pointerup', ()=>{ MAP_DRAG = null; document.querySelector('#mapSvgHost svg')?.classList.remove('dragging'); });
+  }
   box.addEventListener('click', e=>{
-    if(moved){ moved = false; e.stopPropagation(); return; }
+    if(MAP_MOVED){ MAP_MOVED = false; e.stopPropagation(); return; }
     if(!MAP_DATA) return;
     const c = e.target.closest('circle[data-mpin]'), s = e.target.closest('path[data-st]');
     if(c){ const p = MAP_DATA.pins[c.dataset.mpin]; openInvoiceList(`Pin code ${p.pin}${p.city?` · ${p.city}`:''} — invoices`, p.rows); }
     else if(s){ const o = MAP_DATA.st[s.dataset.st]; if(o) openInvoiceList(`${o.name} — invoices`, o.rows); }
   });
   box.addEventListener('mousemove', e=>{
-    if(!MAP_DATA || drag){ tip.style.display = 'none'; return; }
+    if(!MAP_DATA || MAP_DRAG){ tip.style.display = 'none'; return; }
     const c = e.target.closest('circle[data-mpin]'), s = e.target.closest('path[data-st]');
     let html = '';
     if(c){
@@ -198,4 +204,5 @@ function svgPoint(evt){
     tip.style.left = x + 'px'; tip.style.top = y + 'px';
   });
   box.addEventListener('mouseleave', ()=>{ tip.style.display = 'none'; });
-})();
+}
+wireMap();

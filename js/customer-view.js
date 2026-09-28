@@ -51,7 +51,7 @@ function renderCustomerInsights(){
     <div class="kpi" style="--accent:${c.accent}">
       <div class="kpi-head"><span>${c.lbl}</span><i>${c.ico}</i></div>
       <div class="val">${c.val}</div><div class="sub">${c.sub}</div>
-    </div>`).join('');
+    </div>`).join('') + (typeof mvOfflineExtraKpis === 'function' ? mvOfflineExtraKpis() : '');   // repeat rate, growth/decline, inactive, one-time
 
   /* ---- Key insights ---- */
   const icons = { good:'▲', bad:'▼', warn:'!', info:'i' };

@@ -62,7 +62,7 @@ document.querySelectorAll('.sb-nav [data-tab]').forEach(btn=>{
     document.querySelectorAll('.sb-nav [data-tab]').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activeTab = btn.dataset.tab;
-    const TAB_IDS = { main:'mainTab', bi:'biTab', scoring:'scoringTab', customers:'customersTab' };
+    const TAB_IDS = { main:'mainTab', bi:'biTab', scoring:'scoringTab', customers:'customersTab', forecast:'forecastTab' };
     Object.entries(TAB_IDS).forEach(([k,id])=>{ const el = document.getElementById(id); if(el) el.style.display = activeTab===k ? 'block':'none'; });
     // charts drawn while their tab was hidden have 0 width — redraw so they size to the visible box
     if(ALL_ROWS.length) renderAll();
@@ -610,7 +610,7 @@ async function startDashboard(){
     }
     const hashTab = (location.hash || '').replace('#', '');
     if(hashTab === 'settings' && isAdminUser()) setTimeout(openAdminModal, 300);
-    else if(['main','bi','scoring','customers'].indexOf(hashTab) >= 0){ const b = document.querySelector(`.sb-nav [data-tab="${hashTab}"]`); if(b) setTimeout(()=>b.click(), 50); }
+    else if(['main','bi','scoring','customers','forecast'].indexOf(hashTab) >= 0){ const b = document.querySelector(`.sb-nav [data-tab="${hashTab}"]`); if(b) setTimeout(()=>b.click(), 50); }
     // Watchdog: never spin forever
     const wd = setTimeout(()=>{
       if(!ALL_ROWS.length && document.getElementById('loadingScreen').style.display !== 'none'){

@@ -160,6 +160,8 @@ function computeScoring(){
 }
 
 /* ---------------- rendering ---------------- */
+/* Score shown as the gap to 100: 73.7 → −26.3, 103.4 → +3.4 */
+function scoreGap(t){ if(t===null || t===undefined) return '—'; const g = t - 100; return (g >= 0 ? '+' : '−') + Math.abs(g).toFixed(1); }
 function kpiBarHtml(x, team, sp){
   const cap = ADMIN.scoring.cap || 120;
   const w = x.na ? 0 : Math.max(x.raw>0?3:0, Math.min(x.raw, cap)/cap*100);
@@ -178,7 +180,7 @@ function cardHtml(r){
       <div class="sc-kpis">${r.k.map(x=>kpiBarHtml(x, r.dept, r.sp)).join('')}</div>
       <div class="sc-total">
         ${r.total===null ? `<div class="sc-num n">—</div><div class="sc-cap">${r.noSalary?'Set salary in Admin':'No activity'}</div>`
-          : `<div class="sc-num ${b}">${r.total.toFixed(1)}<small>/100</small></div><div class="sc-cap">Overall score${r.partial?' · some KPIs n/a':''}</div>`}
+          : `<div class="sc-num ${b}" title="Score ${r.total.toFixed(1)} out of 100">${scoreGap(r.total)}</div><div class="sc-cap">Score ${r.total.toFixed(1)} / 100 · ${r.total>=100?'above':'to'} target${r.partial?' · some KPIs n/a':''}</div>`}
         <div class="sc-foot"><span class="sk-bar big"><i class="b-${b}" style="width:${r.total===null?0:Math.min(r.total,cap)/cap*100}%"></i><b style="left:${100/cap*100}%"></b></span>
           <div class="sc-meta"><span>${fmtINR(r.revenue)} · ${fmtNum(r.custCount)} cust.</span>${growth}</div></div>
       </div>
@@ -188,11 +190,11 @@ function cardHtml(r){
 function tableHtml(list, team){
   if(!list.length) return '';
   const labels = list[0].k.map(x=>x.label);
-  return `<table class="sc-table" data-caption="${team} team scorecard"><thead><tr><th>Salesperson</th><th style="text-align:right">Overall</th>
+  return `<table class="sc-table" data-caption="${team} team scorecard"><thead><tr><th>Salesperson</th><th style="text-align:right" title="Score minus 100; hover a value for the score">Gap to 100</th>
     ${labels.map(l=>`<th style="text-align:right">${l} actual</th><th style="text-align:right">${l} plan</th><th style="text-align:right">${l} %</th>`).join('')}
     <th style="text-align:right">Growth</th></tr></thead><tbody>` +
     list.map(r=>`<tr class="clickable" data-sc="${r.dept}|${escAttr(r.sp)}"><td class="name">${escAttr(r.sp)}</td>
-      <td style="text-align:right"><span class="pill ${bandOf(r.total)}">${r.total===null?'—':r.total.toFixed(1)}</span></td>
+      <td style="text-align:right"><span class="pill ${bandOf(r.total)}" title="${r.total===null?'':'Score '+r.total.toFixed(1)+' / 100'}">${scoreGap(r.total)}</span></td>
       ${r.k.map(x=>{ const isMoney = x.fmt===fmtINR;
         const val = v => x.na && v===x.actual ? 'n/a' : isMoney ? money(v) : x.fmt(v);
         return `<td style="text-align:right">${val(x.actual)}</td><td style="text-align:right">${isMoney?money(x.plan):x.fmt(x.plan)}</td><td style="text-align:right">${x.na?'n/a':fmtPct(x.raw)}</td>`; }).join('')}
@@ -212,7 +214,7 @@ function renderScoringV2(){
   };
   team(S.nbd, 'nbdCards', 'NBD'); team(S.crr, 'crrCards', 'CRR');
   const avg = l => { const v = l.filter(r=>r.total!==null); return v.length ? v.reduce((s,r)=>s+r.total,0)/v.length : null; };
-  const tile = (label, v, sub) => `<div class="st-tile"><span>${label}</span><strong class="${bandOf(v)}">${v===null?'—':v.toFixed(1)}<small>/100</small></strong><em>${sub}</em></div>`;
+  const tile = (label, v, sub) => `<div class="st-tile"><span>${label}</span><strong class="${bandOf(v)}" title="${v===null?'':'Average score '+v.toFixed(1)+' / 100'}">${scoreGap(v)}<small>${v===null?'':' · '+v.toFixed(1)+'/100'}</small></strong><em>${sub}</em></div>`;
   const on = l => l.filter(r=>r.total!==null && r.total>=G.green).length;
   document.getElementById('scoreTeamTiles').innerHTML =
     tile('NBD team average', avg(S.nbd), `${on(S.nbd)} of ${S.nbd.length} on target`) +
@@ -231,7 +233,7 @@ function openScoreDetail(key){
   document.getElementById('sdHead').innerHTML = `${spPhotoHtml(r.sp,'sd-photo')}
     <div class="sd-id"><h3>${escAttr(r.sp)}</h3>
       <div class="sd-chips"><span class="chip">${r.dept} team</span><span class="chip">${W.label}</span><span class="chip">Targets ${W.ftxt}</span><span class="chip">Rank #${r.rank}</span>${r.salary?`<span class="chip">Salary ${fmtINR(r.salary)}</span>`:'<span class="chip warn">No salary set</span>'}</div></div>
-    <div class="sd-score ${b}">${r.total===null?'—':r.total.toFixed(1)}<small>/100</small></div>`;
+    <div class="sd-score ${b}">${scoreGap(r.total)}<small>${r.total===null?'':' · score '+r.total.toFixed(1)+'/100'}</small></div>`;
   const rows = r.k.map((x,i)=>`<tr>
       <td><b>${x.label}</b><div class="muted">${x.how}</div></td>
       <td class="n"><button class="link-btn" data-sd-actual="${i}" ${x.na&&x.actual==null?'disabled':''}>${x.actual==null?'n/a':x.fmt(x.actual)}</button>${x.drill2?`<div><button class="link-btn sm" data-sd-actual2="${i}">not back →</button></div>`:''}</td>
@@ -244,7 +246,7 @@ function openScoreDetail(key){
   const lost = inc.map(x=>({ l:x.label, gap:x.weight - x.points })).sort((a,c)=>c.gap-a.gap)[0];
   document.getElementById('sdBody').innerHTML = `
     <div class="table-scroll"><table class="sd-table"><thead><tr><th>KPI and how the plan is set</th><th class="n">Actual</th><th class="n">Plan</th><th class="n">Achievement</th><th class="n">Weight</th><th class="n">Points</th></tr></thead>
-    <tbody>${rows}<tr class="tot"><td colspan="5">Overall score${r.partial?' (KPIs marked n/a are left out and the rest re-weighted)':''}</td><td class="n">${r.total===null?'—':r.total.toFixed(1)+' / 100'}</td></tr></tbody></table></div>
+    <tbody>${rows}<tr class="tot"><td colspan="5">Overall score${r.partial?' (KPIs marked n/a are left out and the rest re-weighted)':''}</td><td class="n">${r.total===null?'—':scoreGap(r.total)+' (score '+r.total.toFixed(1)+' / 100)'}</td></tr></tbody></table></div>
     <p class="muted" style="margin:8px 0 14px">Click any <b>Actual</b> to see the invoices behind it, or any <b>Plan</b> to see how the target was worked out.</p>
     <div class="insight-grid">
       ${best?`<div class="insight good"><span class="ins-ico">▲</span><p>Strongest: <b>${best.label}</b> at ${fmtPct(best.raw)} of plan.</p></div>`:''}

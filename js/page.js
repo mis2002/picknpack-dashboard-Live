@@ -3,6 +3,10 @@
    <body data-page="online|gujarat|karnataka|summary">
    ===================================================================== */
 const PAGE = document.body.dataset.page;
+/* the shared map (customer-map.js) opens invoice lists through this name */
+if(typeof openInvoiceList !== 'function') window.openInvoiceList = (title, rows) => mvOpenInvoices(title, rows);
+if(typeof registerDrill !== 'function') window.registerDrill = (title, rows, sub) => mvReg(title, rows, sub);
+document.addEventListener('click', e => { const d = e.target.closest('[data-drill]'); if(!d) return; const x = MV_DRILL.get(d.dataset.drill); if(x) mvOpenInvoices(x.title, x.rows, x.sub); });
 let DASH = null, P_TIMER = null;
 
 function pStatus(ok, msg){ document.getElementById('syncStatus').innerHTML = `<span class="live-dot ${ok ? '' : 'err'}"></span>${msg}`; }
@@ -10,8 +14,8 @@ function pError(msg){ const b = document.getElementById('errBar'); b.innerHTML =
 function pBranding(){
   document.getElementById('brandLabel').textContent = ADMIN.brandName || 'PICK N PACK';
   const logo = document.getElementById('brandLogo'), icon = document.getElementById('sbLogo');
-  logo.onload = () => logo.style.display = ''; logo.onerror = () => logo.style.display = 'none'; logo.src = ADMIN.logo || 'assets/logo.png?v=20260926';
-  icon.onload = () => { icon.style.display = ''; document.querySelector('.sb-brand').style.display = 'none'; }; icon.onerror = () => icon.style.display = 'none'; icon.src = 'assets/logo-icon.png?v=20260926';
+  logo.onload = () => logo.style.display = ''; logo.onerror = () => logo.style.display = 'none'; logo.src = ADMIN.logo || 'assets/logo.png?v=20260928';
+  icon.onload = () => { icon.style.display = ''; document.querySelector('.sb-brand').style.display = 'none'; }; icon.onerror = () => icon.style.display = 'none'; icon.src = 'assets/logo-icon.png?v=20260928';
 }
 function pConfig(){
   if(PAGE === 'summary'){
@@ -25,7 +29,7 @@ function pConfig(){
   QA_PAGE_LOCS = [l.key];
   if(!l.enabled) return { title: l.name, pill: l.name, error: `${l.name} is switched off in Settings. An admin can enable it under Settings → Locations.` };
   return { title: l.name, pill: l.name, desc: l.code === 'online' ? 'Website and marketplace orders. Customers are identified by mobile number.' : `Sales and customers of ${l.name}.`,
-    cfg: { id: 'loc', locations: [l.key], rows: () => RAW_ROWS, showSp: l.code !== 'online', filters: { pin: true, cust: true } } };
+    cfg: { id: 'loc', locations: [l.key], rows: () => RAW_ROWS, showSp: l.code !== 'online', filters: {} } };
 }
 function pHero(D){
   const net = D.cur.reduce((s, r) => s + r.net, 0), prev = D.prev.reduce((s, r) => s + r.net, 0);
@@ -54,7 +58,7 @@ function pDraw(){
     document.title = 'Pick N Pack — ' + (P.title || 'Dashboard');
     if(P.error){ document.getElementById('dashRoot').innerHTML = `<div class="panel mv-empty"><h2>${escAttr(P.title || 'Not available')}</h2><p class="muted">${escAttr(P.error)}</p></div>`; return; }
     const hash = (location.hash || '').replace('#', '');
-    P.cfg.tab = ['sales', 'customers', 'geo'].indexOf(hash) >= 0 ? hash : 'sales';
+    P.cfg.tab = ['sales', 'customers', 'geo', 'forecast'].indexOf(hash) >= 0 ? hash : 'sales';
     P.cfg.onRender = pHero;
     DASH = createDash(document.getElementById('dashRoot'), P.cfg);
     document.querySelectorAll('[data-stab]').forEach(b => b.classList.toggle('active', b.dataset.stab === P.cfg.tab));

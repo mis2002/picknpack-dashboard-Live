@@ -199,17 +199,19 @@ function mvSalesHtml(D, X){
   const pNet = mvSum(D.prev, 'net'), custs = new Set(D.cur.map(mvKey).filter(Boolean)).size;
   let h = mvKpis([
     { l: 'Net sales (excl. GST)', i: '₹', v: fmtINR(net), s: D.prev.length ? `${mvGrowth(mvPct(net, pNet))} vs ${escAttr(D.P.prevLabel)}` : `${fmtNum(inv)} orders`, a: 'var(--violet)', d: mvReg('All invoices', D.cur, D.P.label) },
-    { l: 'Gross sales (incl. GST)', i: '₹', v: fmtINR(gross), s: 'Total billed value', a: 'var(--sky)' },
-    { l: 'Orders', i: '#', v: fmtNum(inv), s: D.prev.length ? `${mvGrowth(mvPct(inv, D.prev.length))} vs previous` : 'Invoices in period', a: 'var(--coral)' },
-    { l: 'Customers', i: '👥', v: fmtNum(custs), s: `${(custs ? inv / custs : 0).toFixed(1)} orders per customer`, a: 'var(--good)' },
-    { l: 'Average order value', i: '≈', v: fmtINR(inv ? net / inv : 0), s: D.prev.length ? `Previous ${fmtINR(D.prev.length ? pNet / D.prev.length : 0)}` : 'Excl. GST', a: 'var(--orange)' },
-    pnet > 0 ? { l: 'Profit', i: '▲', v: fmtINR(profit), s: `${fmtPct(profit / pnet * 100)} margin` + (pnet < net * 0.99 ? ` on ${fmtPct(pnet / net * 100)} of sales` : ''), a: 'var(--indigo-2)', t: 'Margin uses only invoices whose profit has been entered' }
+    { l: 'Gross sales (incl. GST)', i: '₹', v: fmtINR(gross), s: 'Total billed value', a: 'var(--sky)', d: mvReg('All invoices (with GST)', D.cur, D.P.label) },
+    { l: 'Orders', i: '#', v: fmtNum(inv), s: D.prev.length ? `${mvGrowth(mvPct(inv, D.prev.length))} vs previous` : 'Invoices in period', a: 'var(--coral)', d: mvReg('Orders', D.cur, D.P.label) },
+    { l: 'Customers', i: '👥', v: fmtNum(custs), s: `${(custs ? inv / custs : 0).toFixed(1)} orders per customer`, a: 'var(--good)', d: mvReg('Invoices of these customers', D.cur, D.P.label) },
+    { l: 'Average order value', i: '≈', v: fmtINR(inv ? net / inv : 0), s: D.prev.length ? `${mvGrowth(mvPct(inv ? net / inv : 0, D.prev.length ? pNet / D.prev.length : 0))} vs previous` : 'Excl. GST', a: 'var(--orange)', d: mvReg('Invoices behind the average', D.cur, D.P.label) },
+    pnet > 0 ? { l: 'Profit', i: '▲', v: fmtINR(profit), s: `${fmtPct(profit / pnet * 100)} margin` + (pnet < net * 0.99 ? ` on ${fmtPct(pnet / net * 100)} of sales` : ''), a: 'var(--indigo-2)', t: 'Margin uses only invoices whose profit has been entered', d: mvReg('Invoices with profit entered', D.cur.filter(r => !r.pp), D.P.label) }
              : { l: 'Profit', i: '▲', v: 'Not tracked', s: 'No profit entered for this selection', a: 'var(--indigo-2)' }
   ]);
   if(multi) h += mvLocCompareHtml(D, X);
   h += mvPanel('Sales insights', 'Generated from the selected filters. Click an insight to see its invoices.', mvInsights(mvSalesInsights(D, X)));
   h += mvPanel(multi ? 'Monthly sales by location' : 'Monthly sales and orders', multi ? 'Stacked net sales, total on top. Click a bar for its invoices.' : 'Bars: net sales · line: number of orders', mvBox(id + '_month', true));
-  h += `<div class="grid3">${mvPanel('Sales trend', `<span id="${id}_trendDesc"></span>`, mvBox(id + '_trend'))}${multi ? mvPanel('Location share', 'Share of net sales', mvBox(id + '_share')) : mvPanel('Sales by weekday', 'Orders per day of the week', mvBox(id + '_wd'))}</div>`;
+  const g = X.V.gran || 'auto';
+  const granBtns = `<div class="seg-toggle mv-gran">${[['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']].map(([k, l]) => `<button data-mvgran="${k}" class="${g === k ? 'active' : ''}">${l}</button>`).join('')}</div>`;
+  h += `<div class="grid3">${mvPanel('Sales trend', `<span id="${id}_trendDesc"></span>`, mvBox(id + '_trend'), granBtns)}${multi ? mvPanel('Location share', 'Share of net sales', mvBox(id + '_share')) : mvPanel('Sales by weekday', 'Orders per day of the week', mvBox(id + '_wd'))}</div>`;
   if(!multi && new Set(D.cur.map(mvChannelOf)).size > 1) h += `<div class="grid3">${mvPanel('Sales channels', 'From the invoice number prefix', mvBox(id + '_ch'))}${mvPanel('Channel report', 'Click a row for invoices', mvChannelTable(D))}</div>`;
   if(!multi) h += mvPanel('Order size', 'Number of orders in each value band, with their share of sales', mvBox(id + '_bands'));
   if(X.showSp) h += mvSpTable(D, X);
@@ -323,13 +325,15 @@ function mvSalesCharts(D, X){
       (di, i) => ({ title: `Orders ${B[keep[i]][2]}`, rows: cur.filter(r => bi(r.net) === keep[i]) }));
   }
   let mn = Infinity, mxd = -Infinity; for(const r of cur){ const t = +r.date; if(t < mn) mn = t; if(t > mxd) mxd = t; }
-  const daily = cur.length ? (mxd - mn) / MV_DAY <= 62 : true;
-  const keyOf = d => { const x = mvDay(d); if(!daily) x.setDate(x.getDate() - (x.getDay() + 6) % 7); return +x; };
+  let gran = (X.V && X.V.gran && X.V.gran !== 'auto') ? X.V.gran : (cur.length && (mxd - mn) / MV_DAY > 62 ? 'week' : 'day');
+  const daily = gran === 'day';
+  const keyOf = d => { const x = mvDay(d); if(gran === 'week') x.setDate(x.getDate() - (x.getDay() + 6) % 7); if(gran === 'month') x.setDate(1); return +x; };
   const keys = [...new Set(cur.map(r => keyOf(r.date)))].sort((a, b) => a - b);
-  const desc = document.getElementById(id + '_trendDesc'); if(desc) desc.textContent = daily ? 'Daily net sales' : 'Weekly net sales (week starts Monday)';
-  mvChart(id + '_trend', { type: 'line', data: { labels: keys.map(k => new Date(k).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })), datasets: X.locs.map(l => ({ label: locName(l), borderColor: locColor(l), backgroundColor: locColor(l) + '22', fill: !multi, tension: .3, pointRadius: keys.length > 40 ? 0 : 2, borderWidth: 2, data: keys.map(k => mvSum(cur.filter(r => r.location === l && keyOf(r.date) === k), 'net')) })) },
-    options: { interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }, y: mvY() }, plugins: { legend: { display: multi }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtINR(c.raw)}` } } } } },
-    (di, i) => ({ title: `${locName(X.locs[di])} — ${new Date(keys[i]).toLocaleDateString('en-GB')}${daily ? '' : ' (week)'}`, rows: cur.filter(r => r.location === X.locs[di] && keyOf(r.date) === keys[i]) }));
+  const desc = document.getElementById(id + '_trendDesc'); if(desc) desc.textContent = { day: 'Daily net sales', week: 'Weekly net sales (week starts Monday)', month: 'Monthly net sales' }[gran];
+  const tLabel = k => gran === 'month' ? new Date(k).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) : new Date(k).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  mvChart(id + '_trend', { type: gran === 'month' ? 'bar' : 'line', data: { labels: keys.map(tLabel), datasets: X.locs.map(l => ({ label: locName(l), borderColor: locColor(l), backgroundColor: locColor(l) + '22', fill: !multi && gran !== 'month', tension: .3, pointRadius: keys.length > 40 ? 0 : 2, borderWidth: 2, borderRadius: 6, backgroundColor: gran === 'month' ? locColor(l) : locColor(l) + '22', data: keys.map(k => mvSum(cur.filter(r => r.location === l && keyOf(r.date) === k), 'net')) })) },
+    options: { interaction: { mode: 'index', intersect: false }, scales: { x: { stacked: gran === 'month' && multi, grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: mvY({ stacked: gran === 'month' && multi }) }, plugins: { legend: { display: multi }, datalabels: gran === 'month' && !multi ? mvLabels() : { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtINR(c.raw)}` } } } } },
+    (di, i) => ({ title: `${locName(X.locs[di])} — ${tLabel(keys[i])}${gran === 'week' ? ' (week)' : ''}`, rows: cur.filter(r => r.location === X.locs[di] && keyOf(r.date) === keys[i]) }));
 }
 
 /* =====================================================================
@@ -358,28 +362,37 @@ function mvCustListRows(C, which, D){
 }
 const MV_SEG_LIST = { 'At risk': 'atrisk', 'Needs attention': 'quiet', 'Lost': 'inactive', 'New': 'new' };
 function mvCustomersHtml(D, X){
-  const C = X.C = mvCustomers(D), id = X.id, V = X.V;
-  const which = V.ciList || 'sales', periodTxt = D.P.all ? 'all time' : 'period';
-  const noPrev = (!D.prev.length && (which === 'growing' || which === 'declining')) || (which === 'new' && C.newUnknown);
+  const C = X.C = mvCustomers(D), id = X.id, V = X.V, periodTxt = D.P.all ? 'all time' : 'period';
+  const R = mvCustRows(C, D), Cp = mvPrevCustomers(D);
+  const repPrev = Cp ? Cp.repeatRate : null, repDiff = repPrev === null ? null : C.repeatRate - repPrev;
+  const pts = v => v === null ? '' : `<span class="mv-g ${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '▲' : '▼'} ${Math.abs(v).toFixed(1)} pts</span> vs previous`;
   let h = mvKpis([
-    { l: 'Customers', i: '👥', v: fmtNum(C.total), s: D.P.all ? 'All customers in the data' : 'Ordered in ' + escAttr(D.P.label), a: 'var(--violet)' },
+    { l: 'Customers', i: '👥', v: fmtNum(C.total), s: (Cp ? `${mvGrowth(mvPct(C.total, Cp.total))} vs previous · ` : '') + (D.P.all ? 'all customers in the data' : 'ordered in ' + escAttr(D.P.label)), a: 'var(--violet)', d: mvReg('Invoices of active customers', R.active, D.P.label) },
     C.newUnknown ? { l: 'New customers', i: '+', v: '—', s: `History starts ${mvFmtD(C.dataStart)} — pick a later period`, a: 'var(--good)', t: 'New vs returning needs order history from before the selected period' }
-      : { l: 'New customers', i: '+', v: fmtNum(C.newCount), s: `${fmtPct(C.newPct)} of customers · ${fmtPct(C.newSales)} of sales`, a: 'var(--good)', t: D.P.all ? `First order in the last ${dashCfg().customer.newDays} days` : `First order since the data starts (${mvFmtD(C.dataStart)}) falls in this period` },
+      : { l: 'New customers', i: '+', v: fmtNum(C.newCount), s: `${fmtPct(C.newPct)} of customers · ${fmtPct(C.newSales)} of sales` + (Cp && !Cp.newUnknown ? ` · ${mvGrowth(mvPct(C.newCount, Cp.newCount))}` : ''), a: 'var(--good)', t: D.P.all ? `First order in the last ${dashCfg().customer.newDays} days` : `First order since the data starts (${mvFmtD(C.dataStart)}) falls in this period`, d: mvReg('Invoices of new customers', R.newC, D.P.label) },
     C.newUnknown ? { l: 'Returning customers', i: '↩', v: '—', s: 'Needs history before the period', a: 'var(--sky)' }
-      : { l: 'Returning customers', i: '↩', v: fmtNum(C.returning), s: `${fmtPct(100 - C.newPct)} of customers`, a: 'var(--sky)', t: 'Ordered before this period and again in it' },
-    { l: 'Repeat customers', i: '↻', v: fmtNum(C.repeatCount), s: `${fmtPct(C.repeatRate)} repeat rate · ${fmtPct(C.repeatSales)} of sales`, a: 'var(--indigo-2)', t: '2 or more orders ever, up to the end of the period' },
-    { l: 'Avg orders per customer', i: '#', v: C.avgOrders.toFixed(2), s: `Average order value ${fmtINR(C.aov)}`, a: 'var(--orange)' },
-    { l: 'At risk', i: '!', v: fmtNum(C.atRisk), s: `${fmtINR(C.segs['At risk'].life)} lifetime sales`, a: 'var(--coral)' },
-    { l: 'Inactive', i: '⏸', v: fmtNum(C.inactive), s: `No order in ${dashCfg().customer.inactiveDays}+ days`, a: 'var(--ink-dim2)' },
-    { l: 'Concentration', i: '◔', v: fmtPct(C.top10), s: `Top 10 share · ${fmtNum(C.n80)} customers make 80% of sales`, a: 'var(--sky)' }
+      : { l: 'Returning customers', i: '↩', v: fmtNum(C.returning), s: `${fmtPct(100 - C.newPct)} of customers`, a: 'var(--sky)', t: 'Ordered before this period and again in it', d: mvReg('Invoices of returning customers', R.ret, D.P.label) },
+    { l: 'Repeat customer rate', i: '↻', v: fmtPct(C.repeatRate), s: `${fmtNum(C.repeatCount)} repeat customers` + (repDiff === null ? ` · ${fmtPct(C.repeatSales)} of sales` : ` · ${pts(repDiff)}`), a: 'var(--indigo-2)', t: 'Customers with 2 or more orders ever (up to the end of the period) as a share of active customers', d: mvReg('Invoices of repeat customers', R.rep, D.P.label) },
+    { l: 'Avg orders per customer', i: '#', v: C.avgOrders.toFixed(2), s: `AOV ${fmtINR(C.aov)}` + (Cp ? ` · ${mvGrowth(mvPct(C.avgOrders, Cp.avgOrders))}` : ''), a: 'var(--orange)', d: mvReg('Orders in period', R.active, D.P.label) },
+    { l: 'At risk', i: '!', v: fmtNum(C.atRisk), s: `${fmtINR(C.segs['At risk'].life)} lifetime sales`, a: 'var(--coral)', d: mvReg('At-risk customers — all their invoices', R.atRisk) },
+    { l: 'Inactive', i: '⏸', v: fmtNum(C.inactive), s: `No order in ${dashCfg().customer.inactiveDays}+ days`, a: 'var(--ink-dim2)', d: mvReg('Inactive customers — all their invoices', R.lost) },
+    { l: 'Concentration', i: '◔', v: fmtPct(C.top10), s: `Top 10 share · ${fmtNum(C.n80)} customers make 80% of sales`, a: 'var(--sky)', d: mvReg('Invoices of the top 10 customers', R.top10, D.P.label) }
   ]);
   if(C.unidentified) h += `<div class="mv-note">${fmtNum(C.unidentified)} invoices have no usable customer name or mobile number and are not counted as customers.</div>`;
   h += mvPanel('Customer insights', 'Generated from the selected filters', mvInsights(mvCustInsights(C, D)));
   h += `<div class="grid3">${mvPanel('New vs returning customers', `Per month: customers ordering for the first time vs coming back.${C.dataStart ? ` History starts ${mvFmtD(C.dataStart)}, so the first month counts everyone as new.` : ''}`, mvBox(id + '_nvr'))}${mvPanel('Customer segments', 'Click a slice to list those customers', mvBox(id + '_seg'))}</div>`;
+  h += mvPanel('Repeat customer rate by month', 'Bars: customers who had ordered before that month · line: their share of all customers that month. Click a bar for its invoices.', mvBox(id + '_rep'));
   h += mvPanel('What to do with each segment', 'Segments use each customer\'s full history up to the end of the selected period. Click a row to list the customers.',
     `<div class="table-scroll"><table><thead><tr><th>Segment</th><th style="text-align:right">Customers</th><th style="text-align:right">Lifetime sales</th><th style="text-align:right">Sales (${periodTxt})</th><th>Meaning and action</th></tr></thead><tbody>
     ${MV_SEG_ORDER.map(s => { const g = C.segs[s], info = mvSegInfo(s); return `<tr class="clickable" data-mvseg="${escAttr(s)}"><td><span class="seg-pill" style="--c:${MV_SEG_COLOR[s]}">${s}</span></td><td style="text-align:right">${fmtNum(g.n)}</td><td style="text-align:right">${money(g.life)}</td><td style="text-align:right">${money(g.cur)}</td><td class="seg-meaning">${info[0]}<br><span class="seg-action">→ ${info[1]}</span></td></tr>`; }).join('')}
     </tbody></table></div>`, `<button class="util-btn small" data-mvcsv="segments">Export CSV</button>`);
+  h += mvCustListPanelHtml(C, D, X);
+  return h;
+}
+function mvCustListPanelHtml(C, D, X){
+  const V = X.V, id = X.id, which = V.ciList || 'sales', periodTxt = D.P.all ? 'all time' : 'period';
+  const noPrev = (!D.prev.length && (which === 'growing' || which === 'declining')) || (which === 'new' && C.newUnknown);
+  let h = '';
   let rows = V.ciSeg ? C.segs[V.ciSeg].list.slice().sort((a, b) => b.life.net - a.life.net) : mvCustListRows(C, which, D);
   const q = (V.custSearch || '').trim().toLowerCase();
   if(q) rows = rows.filter(c => (c.name + ' ' + c.key).toLowerCase().includes(q));
@@ -426,6 +439,12 @@ function mvCustomersCharts(D, X){
   mvChart(id + '_nvr', { type: 'bar', data: { labels: months.map(mvMonthLabel), datasets: [{ label: 'New', data: nv.map(x => x.n), backgroundColor: '#1FB286', borderRadius: 5, stack: 'c' }, { label: 'Returning', data: nv.map(x => x.s), backgroundColor: '#6C5CE7', borderRadius: 5, stack: 'c' }] },
     options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, afterDataLimits: padValueAxis } }, plugins: { stackTotals: { enabled: true, formatter: v => fmtNum(v) } } } },
     (di, i) => ({ title: `${di === 0 ? 'New' : 'Returning'} customers — ${mvMonthLabel(months[i])}`, rows: src.filter(r => mvMonthKey(r.date) === months[i] && mvKey(r) && ((mvMonthKey(first[mvKey(r)]) === months[i]) === (di === 0))) }));
+  const rr = months.map((m, i) => { const t = nv.at(i).n + nv.at(i).s; return t ? nv.at(i).s / t * 100 : 0; });
+  mvChart(id + '_rep', { data: { labels: months.map(mvMonthLabel), datasets: [
+      { type: 'bar', label: 'Repeat customers', data: nv.map(x => x.s), backgroundColor: '#6C5CE7', borderRadius: 6, yAxisID: 'y', datalabels: mvLabels(v => fmtNum(v)) },
+      { type: 'line', label: 'Repeat rate %', data: rr, borderColor: '#F6A623', backgroundColor: '#F6A623', tension: .3, yAxisID: 'y2', pointRadius: 3, datalabels: { display: true, align: 'top', offset: 6, color: '#B36B00', font: { size: 10, weight: 700 }, formatter: v => fmtPct(v) } }] },
+    options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, afterDataLimits: padValueAxis, grid: { color: THEME.grid } }, y2: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { callback: v => v + '%' } } } } },
+    (di, i) => ({ title: `Repeat customers — ${mvMonthLabel(months[i])}`, rows: src.filter(r => mvMonthKey(r.date) === months[i] && mvKey(r) && mvMonthKey(first[mvKey(r)]) !== months[i]) }));
   const segs = MV_SEG_ORDER.filter(s => C.segs[s].n);
   mvChart(id + '_seg', { type: 'doughnut', data: { labels: segs, datasets: [{ data: segs.map(s => C.segs[s].n), backgroundColor: segs.map(s => MV_SEG_COLOR[s]), borderWidth: 2, borderColor: '#fff' }] },
     options: { cutout: '58%', onClick: (e, els) => { if(els[0]){ const inst = MV_INST[X.id]; if(inst){ inst.V.ciSeg = segs[els[0].index]; inst.V.custLimit = 50; inst.render(); mvScrollTo(X.id + '_lists'); } } },
@@ -448,9 +467,7 @@ function mvGeoHtml(D, X){
     { l: 'Cities / towns', i: '🏙', v: cities === null ? '…' : fmtNum(cities), s: 'From the India Post pincode directory', a: 'var(--good)' },
     { l: 'Top 10 pincodes', i: '◔', v: fmtPct(top10), s: 'Share of sales', a: 'var(--orange)' }
   ]);
-  if(!X.noMap) h += mvPanel('Customer map', 'States shaded by sales; bubbles at each pincode, sized by sales. Hover for details, click for invoices.',
-    `<div class="map-layout"><div class="map-box" id="${id}_mapBox"><div class="map-ctrl"><button data-mvzoom="in" aria-label="Zoom in">+</button><button data-mvzoom="out" aria-label="Zoom out">−</button><button data-mvzoom="reset" aria-label="Reset" style="font-size:14px">⟲</button></div><div id="${id}_map" style="height:100%"></div><div class="map-tip" id="${id}_tip"></div><div class="map-legend" id="${id}_legend"></div></div>
-     <div class="map-side"><h3 class="score-h3" style="margin:0 0 6px">Top states</h3>${mvStateTable(G)}</div></div>`);
+  if(!X.noMap) h += mvMapPanelHtml();
   h += `<div class="grid3">${mvPanel('Top states by sales', 'Place of supply', mvBox(id + '_states', true))}${mvPanel('Top pincodes by sales', 'Click a bar for its invoices', mvBox(id + '_pins', true))}</div>`;
   h += mvPanel('Pincode performance', `Top ${Math.min(50, pins.length)} of ${fmtNum(pins.length)} pincodes · click a column to sort · click a row for invoices${X.canFilter ? ', or Filter to focus the dashboard on that pincode' : ''}`,
     `<div class="table-scroll"><table><thead><tr><th>#</th><th>Pincode</th><th>City / state</th>${[['net', 'Sales'], ['inv', 'Orders'], ['cust', 'Customers'], ['aov', 'AOV'], ['growth', 'Growth']].map(([k, l]) => `<th style="text-align:right" class="mv-sortable ${sortKey === k ? 'on' : ''}" data-mvsort="${k}">${l}${sortKey === k ? ' ▾' : ''}</th>`).join('')}<th style="text-align:right">Share</th><th>Top customer</th>${X.canFilter ? '<th></th>' : ''}</tr></thead><tbody>
@@ -475,7 +492,7 @@ function mvGeoCharts(D, X){
   const lbl = p => { const info = mvHasPins() ? pinInfo(p.k) : null; return p.k + (info && info.city ? ' · ' + info.city : ''); };
   mvChart(id + '_pins', { type: 'bar', data: { labels: pn.map(lbl), datasets: [{ label: 'Sales', data: pn.map(p => p.net), backgroundColor: '#3FB8E0', borderRadius: 6 }] },
     options: { indexAxis: 'y', scales: { x: mvY(), y: { grid: { display: false } } }, plugins: { legend: { display: false }, datalabels: mvLabels() } } }, (di, i) => ({ title: 'Pincode ' + pn[i].k + ' — invoices', rows: pn[i].rows }));
-  mvMap(D, X);
+  if(!X.noMap && typeof renderCustomerMap === 'function' && document.getElementById('mapBox')){ MAP_ROWS = () => D.cur; wireMap(); renderCustomerMap(); }
 }
 /* map: reuses the India outlines (india-map.js) and pincode directory (customer-map.js) */
 function mvMap(D, X){
@@ -585,7 +602,9 @@ function createDash(root, cfg){
     if(!D.base.length) body.innerHTML = `<div class="panel mv-empty"><h2>No data</h2><p class="muted">${cfg.locations.length === 1 ? escAttr(locName(cfg.locations[0])) + ' has no invoices yet. Reports appear automatically once invoices are pushed.' : 'Nothing matches these filters. Try a wider period or clear the filters.'}</p></div>`;
     else if(V.tab === 'customers'){ body.innerHTML = mvCustomersHtml(D, X); mvCustomersCharts(D, X); }
     else if(V.tab === 'geo'){ body.innerHTML = mvGeoHtml(D, X); mvGeoCharts(D, X); }
+    else if(V.tab === 'forecast'){ body.innerHTML = mvForecastHtml(D, X); mvForecastCharts(D, X); }
     else { body.innerHTML = mvSalesHtml(D, X); mvSalesCharts(D, X); }
+    root.querySelector('.mv-filterbar [data-mv="preset"]').closest('.filter-block').style.opacity = V.tab === 'forecast' ? .45 : 1;
     if(focusSearch){ const i = root.querySelector('[data-mvsearch]'); if(i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
     if(cfg.onRender) cfg.onRender(D, V);
   }
@@ -602,6 +621,7 @@ function createDash(root, cfg){
     const l = e.target.closest('[data-mvlist]'); if(l){ V.ciList = l.dataset.mvlist; V.ciSeg = null; V.custLimit = 50; render(); return; }
     const sg = e.target.closest('[data-mvseg]'); if(sg){ V.ciSeg = sg.dataset.mvseg; V.custLimit = 50; render(); mvScrollTo(cfg.id + '_lists'); return; }
     const s = e.target.closest('[data-mvsort]'); if(s){ V.geoSort = s.dataset.mvsort; render(); return; }
+    const gb = e.target.closest('[data-mvgran]'); if(gb){ V.gran = gb.dataset.mvgran; render(); return; }
     if(e.target.closest('[data-mvmore]')){ V.custLimit += 100; render(); }
   });
   root.addEventListener('change', e => {
@@ -680,23 +700,17 @@ function mvTableCSV(table, name){
   mvDownload(name, [...table.querySelectorAll('tr')].map(tr => [...tr.children].map(td => { const m = td.querySelector('[data-v]'); return mvCsvCell(m ? m.dataset.v : td.textContent.trim()); }).join(',')).join('\n'));
 }
 
-/* ---------------- Delhi Offline: embedded Customer Intelligence + Geographic Performance ---------------- */
+/* ---------------- Delhi Offline: embedded panels (customer lists on Customers tab, Forecast tab) ---------------- */
 function mvEmbedOffline(which, hostId){
   const host = document.getElementById(hostId); if(!host || !ALL_ROWS.length) return;
   const id = 'off_' + which;
   host.dataset.mvroot = id;
-  const inst = MV_INST[id] || (MV_INST[id] = { V: { ciList: 'sales', ciSeg: null, custSearch: '', custLimit: 25, geoSort: 'net', mapVB: null } });
+  const inst = MV_INST[id] || (MV_INST[id] = { V: { ciList: 'growing', ciSeg: null, custSearch: '', custLimit: 25, geoSort: 'net', mapVB: null } });
   inst.render = () => mvEmbedOffline(which, hostId);
-  const base = baseFiltered(ALL_ROWS), win = periodWindow();
-  let latest = new Date(0); for(const r of base) if(r.date > latest) latest = r.date;
-  if(!latest.getTime()) latest = new Date();
-  let P;
-  if(win.isAll) P = { all: true, label: 'All time', end: mvEnd(latest) };
-  else { const len = win.end - win.start, pe = new Date(win.start.getTime() - 1); P = { start: win.start, end: win.end, prevStart: new Date(pe.getTime() - len), prevEnd: pe, label: (document.getElementById('periodDesc').textContent || '').replace(/^Showing /, ''), prevLabel: 'the previous period' }; }
-  const D = inst.D = { base, cur: currentRows(), prev: P.all ? [] : base.filter(r => r.date >= P.prevStart && r.date <= P.prevEnd), hist: P.all ? base : base.filter(r => r.date <= P.end), P, latest };
-  const X = inst.X = { id, locs: ['Delhi- Offline'], V: inst.V, canFilter: false, noMap: which === 'geo' };   // the Customers tab already has a map
-  if(which === 'geo'){ host.innerHTML = mvGeoHtml(D, X); mvGeoCharts(D, X); }
-  else { host.innerHTML = mvCustomersHtml(D, X); mvCustomersCharts(D, X); }
+  const D = inst.D = mvOfflineData();
+  const X = inst.X = { id, locs: ['Delhi- Offline'], V: inst.V, canFilter: false };
+  if(which === 'fc'){ host.innerHTML = mvForecastHtml(D, X); mvForecastCharts(D, X); }
+  else { const C = X.C = mvCustomers(D); host.innerHTML = mvCustListPanelHtml(C, D, X); }
 }
 document.addEventListener('click', e => {
   const root = e.target.closest('[data-mvroot^="off_"]'); if(!root) return;
@@ -712,3 +726,195 @@ document.addEventListener('input', e => {
   const inst = MV_INST[root.dataset.mvroot]; if(!inst) return; inst.V.custSearch = e.target.value;
   clearTimeout(inst._t); inst._t = setTimeout(() => { inst.render(); const i = root.querySelector('[data-mvsearch]'); if(i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 300);
 });
+
+/* =====================================================================
+   Helpers for clickable KPIs + previous-period comparison
+   ===================================================================== */
+function mvCustRows(C, D){
+  const keys = list => new Set(list.map(c => c.key));
+  const pick = (set, src) => src.filter(r => set.has(mvKey(r)));
+  const act = C.active, byVal = act.slice().sort((a, b) => (D.P.all ? b.life.net - a.life.net : b.cur.net - a.cur.net));
+  return {
+    active: D.P.all ? D.hist : D.cur,
+    newC: pick(keys(act.filter(c => c.isNew)), D.P.all ? D.hist : D.cur),
+    ret: pick(keys(act.filter(c => !c.isNew)), D.P.all ? D.hist : D.cur),
+    rep: pick(keys(act.filter(c => c.repeat)), D.P.all ? D.hist : D.cur),
+    atRisk: pick(keys(C.segs['At risk'].list), D.hist),
+    lost: pick(keys(C.segs['Lost'].list), D.hist),
+    top10: pick(keys(byVal.slice(0, 10)), D.P.all ? D.hist : D.cur)
+  };
+}
+/* the same customer numbers for the previous period (null when there is none) */
+function mvPrevCustomers(D){
+  if(D.P.all || !D.prev.length) return null;
+  return mvCustomers({ base: D.base, hist: D.base.filter(r => r.date <= D.P.prevEnd), cur: D.prev, prev: [], P: { start: D.P.prevStart, end: D.P.prevEnd, all: false }, latest: D.latest });
+}
+/* the exact map used on Delhi Offline (customer-map.js) */
+function mvMapPanelHtml(){
+  if(typeof renderCustomerMap !== 'function') return '';
+  return `<div class="panel"><div class="panel-head"><div><h2>Where our customers are</h2><p class="desc" id="custMapDesc"></p></div>
+    <div class="seg-toggle" id="mapModeToggle"><button data-m="both" class="active">States + pin codes</button><button data-m="states">States</button><button data-m="pins">Pin codes</button></div></div>
+    <div class="map-layout"><div class="map-box" id="mapBox"><div class="map-ctrl"><button id="mapZoomIn" aria-label="Zoom in">+</button><button id="mapZoomOut" aria-label="Zoom out">−</button><button id="mapReset" aria-label="Reset view" style="font-size:14px">⟲</button></div>
+      <div id="mapSvgHost" style="height:100%"></div><div class="map-tip" id="mapTip"></div><div class="map-legend" id="mapLegend"></div></div>
+    <div class="map-side"><div class="kpi-mini-row" id="mapStats" style="grid-template-columns:1fr 1fr;margin:0"></div><div class="map-status" id="mapStatus"></div>
+      <h3 class="score-h3" style="margin:2px 0">Top cities and towns</h3><div class="table-scroll" style="max-height:380px"><table style="min-width:0"><thead><tr><th>#</th><th>City</th><th style="text-align:right">Customers</th><th style="text-align:right">Net sales</th><th style="text-align:right">Share</th></tr></thead><tbody id="mapCityTable"></tbody></table></div></div></div></div>`;
+}
+
+/* =====================================================================
+   FORECAST — simple, explainable estimates from the full history
+   • Month-end: sales so far + the usual sales of each remaining day (weekday pattern, last 90 days)
+   • Next months: average of a straight-line trend (last 6 full months) and the last-3-month average
+   • Range: ± the typical miss of the trend line on past months (at least ±10%)
+   • Reorders: customers whose usual reorder gap says they will buy in the next 30 days
+   ===================================================================== */
+function mvForecast(rows, latest){
+  const L = mvDay(latest), y = L.getFullYear(), m = L.getMonth();
+  const mk = (yy, mm) => mvMonthKey(new Date(yy, mm, 1));
+  const byM = {}, byMInv = {}; rows.forEach(r => { const k = mvMonthKey(r.date); byM[k] = (byM[k] || 0) + r.net; byMInv[k] = (byMInv[k] || 0) + 1; });
+  const curK = mk(y, m), monthEnd = new Date(y, m + 1, 0), daysIn = monthEnd.getDate();
+  const mtdRows = rows.filter(r => mvMonthKey(r.date) === curK), mtd = mvSum(mtdRows, 'net');
+  // weekday pattern from the last 90 days (days with no sales count as zero)
+  const from = new Date(L.getTime() - 89 * MV_DAY), wSum = [0,0,0,0,0,0,0], wCnt = [0,0,0,0,0,0,0], wInv = [0,0,0,0,0,0,0];
+  for(let d = new Date(from); d <= L; d = new Date(d.getTime() + MV_DAY)) wCnt[d.getDay()]++;
+  rows.forEach(r => { if(r.date >= from && r.date <= mvEnd(L)){ wSum[r.date.getDay()] += r.net; wInv[r.date.getDay()]++; } });
+  const wAvg = wSum.map((v, i) => wCnt[i] ? v / wCnt[i] : 0), wAvgInv = wInv.map((v, i) => wCnt[i] ? v / wCnt[i] : 0);
+  let restNet = 0, restInv = 0, restDays = 0;
+  for(let d = L.getDate() + 1; d <= daysIn; d++){ const dow = new Date(y, m, d).getDay(); restNet += wAvg[dow]; restInv += wAvgInv[dow]; restDays++; }
+  const projMonth = mtd + restNet, projInv = mtdRows.length + restInv;
+  // full months before the current one
+  const fullKeys = Object.keys(byM).filter(k => k < curK).sort();
+  const firstDate = rows.reduce((mn, r) => (!mn || r.date < mn) ? r.date : mn, null);
+  const firstFull = firstDate && firstDate.getDate() > 1 ? mvMonthKey(new Date(firstDate.getFullYear(), firstDate.getMonth() + 1, 1)) : (firstDate ? mvMonthKey(firstDate) : null);
+  const usable = fullKeys.filter(k => !firstFull || k >= firstFull).slice(-6);
+  const vals = usable.map(k => byM[k]);
+  let slope = 0, icpt = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : projMonth, resid = 0;
+  if(vals.length >= 3){
+    const n = vals.length, xm = (n - 1) / 2, ym = vals.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0; vals.forEach((v, i) => { num += (i - xm) * (v - ym); den += (i - xm) ** 2; });
+    slope = den ? num / den : 0; icpt = ym - slope * xm;
+    resid = Math.sqrt(vals.reduce((s, v, i) => s + (v - (icpt + slope * i)) ** 2, 0) / n);
+  }
+  const avg3 = vals.length ? vals.slice(-3).reduce((a, b) => a + b, 0) / Math.min(3, vals.length) : projMonth;
+  const at = step => { const t = vals.length - 1 + step; const trend = vals.length >= 3 ? icpt + slope * t : avg3; return Math.max(0, (trend + avg3) / 2); };
+  const band = v => Math.max(resid, v * 0.1);
+  const next = [1, 2, 3].map(i => { const d = new Date(y, m + i, 1), v = at(i + 0); return { k: mvMonthKey(d), v, lo: Math.max(0, v - band(v)), hi: v + band(v) }; });
+  // financial year (April–March)
+  const fyStart = m >= 3 ? y : y - 1, fyEndM = new Date(fyStart + 1, 2, 1);
+  const fyActual = mvSum(rows.filter(r => r.date >= new Date(fyStart, 3, 1) && r.date <= mvEnd(L)), 'net');
+  let fyProj = fyActual + restNet, step = 1;
+  for(let d = new Date(y, m + 1, 1); d <= fyEndM; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) fyProj += at(step++);
+  const lastK = mk(y, m - 1), lastMonth = byM[lastK] || 0;
+  const lastSameDay = mvSum(rows.filter(r => mvMonthKey(r.date) === lastK && r.date.getDate() <= L.getDate()), 'net');
+  const needPerDay = restDays ? Math.max(0, lastMonth - mtd) / restDays : 0;
+  const monthlyTrendPct = vals.length >= 3 && Math.abs(icpt + slope * (vals.length - 1)) > 0 ? slope / ((icpt + slope * (vals.length - 1)) || 1) * 100 : null;
+  return { L, curK, mtd, mtdRows, projMonth, projInv, restDays, daysIn, lastK, lastMonth, lastSameDay, needPerDay, next, fyStart, fyActual, fyProj, usable, byM, byMInv, wAvg, monthlyTrendPct, resid, vals, projBand: band(projMonth) * (restDays / daysIn) };
+}
+function mvReorders(rows, latest){
+  const C = mvCustomers({ base: rows, hist: rows, cur: rows, prev: [], P: { all: true }, latest });
+  const L = mvDay(latest), horizon = new Date(L.getTime() + 30 * MV_DAY);
+  const due = [];
+  C.list.forEach(c => { if(c.orderDays < 3 || !c.avgGap) return; const next = new Date(mvDay(c.last).getTime() + Math.round(c.avgGap) * MV_DAY);
+    if(next > horizon) return; const late = Math.floor((L - next) / MV_DAY);
+    if(late > Math.max(14, c.avgGap)) return;                 // long overdue → at risk, not a forecast
+    due.push({ c, next, late, exp: c.aov }); });
+  return due.sort((a, b) => a.next - b.next);
+}
+function mvForecastHtml(D, X){
+  const id = X.id, F = X.F = mvForecast(D.base, D.latest), R = X.R = mvReorders(D.base, D.latest);
+  const vsLast = F.lastMonth ? (F.projMonth - F.lastMonth) / F.lastMonth * 100 : null, paceVs = F.lastSameDay ? (F.mtd - F.lastSameDay) / F.lastSameDay * 100 : null;
+  const expReorder = R.reduce((s, x) => s + x.exp, 0), dueKeys = new Set(R.map(x => x.c.key));
+  const lastRows = D.base.filter(r => mvMonthKey(r.date) === F.lastK), curLabel = mvMonthLabel(F.curK);
+  let h = `<div class="mv-note">Estimates from ${fmtNum(D.base.length)} invoices up to ${mvFmtD(F.L)}. They follow the filters above except the period (forecasts always use the full history). Treat them as a guide, not a promise.</div>`;
+  h += mvKpis([
+    { l: `${curLabel} so far`, i: '₹', v: fmtINR(F.mtd), s: paceVs === null ? `${fmtNum(F.mtdRows.length)} orders` : `${mvGrowth(paceVs)} vs same days last month`, a: 'var(--violet)', d: mvReg(`${curLabel} — invoices so far`, F.mtdRows) },
+    { l: `${curLabel} projected`, i: '◎', v: fmtINR(F.projMonth), s: `range ${fmtINRShort(Math.max(0, F.projMonth - F.projBand))} – ${fmtINRShort(F.projMonth + F.projBand)}` + (vsLast === null ? '' : ` · ${mvGrowth(vsLast)} vs last month`), a: 'var(--orange)', t: 'Sales so far + the usual sales for each remaining day of the month (weekday pattern of the last 90 days)', d: mvReg(`${curLabel} — invoices so far`, F.mtdRows) },
+    { l: 'Last month', i: '▭', v: fmtINR(F.lastMonth), s: `${mvMonthLabel(F.lastK)} · ${fmtNum(lastRows.length)} orders`, a: 'var(--sky)', d: mvReg(`${mvMonthLabel(F.lastK)} — invoices`, lastRows) },
+    { l: 'Needed per day', i: '→', v: F.restDays ? fmtINR(F.needPerDay) : '—', s: F.restDays ? `for ${F.restDays} remaining days to match last month` : 'Month complete', a: 'var(--coral)' },
+    { l: `Next month (${mvMonthLabel(F.next[0].k)})`, i: '↗', v: fmtINR(F.next[0].v), s: `range ${fmtINRShort(F.next[0].lo)} – ${fmtINRShort(F.next[0].hi)}`, a: 'var(--good)', t: 'Average of the trend line over the last full months and the last-3-month average' },
+    { l: `FY ${F.fyStart}-${String((F.fyStart + 1) % 100).padStart(2, '0')} projected`, i: 'Σ', v: fmtINR(F.fyProj), s: `${fmtINR(F.fyActual)} booked so far`, a: 'var(--indigo-2)' },
+    { l: 'Projected orders', i: '#', v: fmtNum(Math.round(F.projInv)), s: `${curLabel} · ${fmtNum(F.mtdRows.length)} so far`, a: 'var(--sky)' },
+    { l: 'Expected reorders (30 days)', i: '↻', v: fmtNum(R.length), s: `≈ ${fmtINR(expReorder)} at their usual order value`, a: 'var(--good)', d: mvReg('Customers due to reorder — their past invoices', D.base.filter(r => dueKeys.has(mvKey(r)))) }
+  ]);
+  h += mvPanel('Forecast insights', 'Click an insight to see its invoices', mvInsights(mvForecastInsights(F, R, D)));
+  h += mvPanel('Monthly sales and forecast', 'Bars: actual (this month so far in light colour) · dashed line: forecast with its low–high range', mvBox(id + '_fcm', true));
+  h += `<div class="grid3">${mvPanel(`${curLabel}: running total`, 'Actual so far vs projected path vs last month (same day of month)', mvBox(id + '_fcd'))}${mvPanel('Usual sales by weekday', 'Average net sales per weekday over the last 90 days — used for the month-end projection', mvBox(id + '_fcw'))}</div>`;
+  const rowsTbl = F.usable.slice(-6).map(k => `<tr><td class="name">${mvMonthLabel(k)}</td><td style="text-align:right">${money(F.byM[k])}</td><td style="text-align:right">${fmtNum(F.byMInv[k] || 0)}</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td><span class="muted">Actual</span></td></tr>`).join('')
+    + `<tr><td class="name"><b>${curLabel}</b></td><td style="text-align:right">${money(F.mtd)}</td><td style="text-align:right">${fmtNum(F.mtdRows.length)}</td><td style="text-align:right;font-weight:700">${money(F.projMonth)}</td><td style="text-align:right">${money(Math.max(0, F.projMonth - F.projBand))} – ${money(F.projMonth + F.projBand)}</td><td>Month to date + projection</td></tr>`
+    + F.next.map(n => `<tr><td class="name">${mvMonthLabel(n.k)}</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right;font-weight:700">${money(n.v)}</td><td style="text-align:right">${money(n.lo)} – ${money(n.hi)}</td><td>Forecast</td></tr>`).join('');
+  h += mvPanel('Forecast report', 'Last full months, this month and the next three', `<div class="table-scroll"><table><thead><tr><th>Month</th><th style="text-align:right">Actual</th><th style="text-align:right">Orders</th><th style="text-align:right">Forecast</th><th style="text-align:right">Range</th><th>Basis</th></tr></thead><tbody>${rowsTbl}</tbody></table></div>`, `<button class="util-btn small" data-mvcsv="forecast">Export CSV</button>`);
+  h += mvPanel('Customers due to reorder', `${fmtNum(R.length)} customers whose usual reorder gap says they will order in the next 30 days (or are a little late). Call the late ones first.`,
+    `<div class="table-scroll"><table><thead><tr><th>#</th><th>Customer</th>${X.locs.length > 1 ? '<th>Location</th>' : ''}<th>Last order</th><th style="text-align:right">Usual gap</th><th>Expected</th><th style="text-align:right">Status</th><th style="text-align:right">Usual order</th><th style="text-align:right">Lifetime</th></tr></thead><tbody>
+    ${R.slice(0, 60).map((x, i) => `<tr class="clickable" data-mvcust="${escAttr(x.c.key)}"><td>${i + 1}</td><td class="name">${escAttr(x.c.name)}</td>${X.locs.length > 1 ? `<td>${Object.keys(x.c.locs).map(mvTag).join(' ')}</td>` : ''}<td>${mvFmtD(x.c.last)}</td><td style="text-align:right">${Math.round(x.c.avgGap)} days</td><td>${mvFmtD(x.next)}</td><td style="text-align:right">${x.late > 0 ? `<span class="mv-g down">${x.late} days late</span>` : `in ${-x.late} days`}</td><td style="text-align:right">${money(x.exp)}</td><td style="text-align:right">${money(x.c.life.net)}</td></tr>`).join('') || '<tr><td colspan="9" class="empty-note">No regular customers are due in the next 30 days.</td></tr>'}
+    </tbody></table></div>`, `<button class="util-btn small" data-mvcsv="reorders">Export CSV</button>`);
+  return h;
+}
+function mvForecastInsights(F, R, D){
+  const out = [], cur = mvMonthLabel(F.curK);
+  if(F.lastMonth) out.push({ t: F.projMonth >= F.lastMonth ? 'good' : 'warn', x: `At the current pace ${cur} ends near <b>${fmtINR(F.projMonth)}</b>, ${F.projMonth >= F.lastMonth ? 'above' : 'below'} last month's ${fmtINR(F.lastMonth)} by ${fmtPct(Math.abs(F.projMonth - F.lastMonth) / F.lastMonth * 100)}.`, d: mvReg(`${cur} — invoices so far`, F.mtdRows) });
+  if(F.restDays && F.lastMonth > F.mtd) out.push({ t: 'info', x: `To match last month, the remaining ${F.restDays} days need <b>${fmtINR(F.needPerDay)}</b> a day (usual: ${fmtINR((F.projMonth - F.mtd) / F.restDays)}).` });
+  if(F.monthlyTrendPct !== null) out.push({ t: F.monthlyTrendPct >= 0 ? 'good' : 'bad', x: `Over the last ${F.vals.length} full months sales have moved <b>${F.monthlyTrendPct >= 0 ? '+' : '−'}${fmtPct(Math.abs(F.monthlyTrendPct))}</b> a month on average.` });
+  else out.push({ t: 'info', x: `Only ${F.vals.length} full month${F.vals.length === 1 ? '' : 's'} of history — the forecast uses the average for now and will sharpen as data grows.` });
+  const dn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], best = F.wAvg.indexOf(Math.max(...F.wAvg)), low = F.wAvg.indexOf(Math.min(...F.wAvg));
+  out.push({ t: 'info', x: `<b>${dn[best]}</b> is the strongest day (≈ ${fmtINR(F.wAvg[best])}); <b>${dn[low]}</b> the weakest (≈ ${fmtINR(F.wAvg[low])}).` });
+  const late = R.filter(x => x.late > 0);
+  if(R.length) out.push({ t: late.length ? 'warn' : 'good', x: `<b>${fmtNum(R.length)}</b> regular customers are due to reorder in 30 days (≈ ${fmtINR(R.reduce((s, x) => s + x.exp, 0))}); <b>${fmtNum(late.length)}</b> are already late.`, d: mvReg('Late reorders — their invoices', D.base.filter(r => late.some(x => x.c.key === mvKey(r)))) });
+  out.push({ t: 'info', x: `Next three months: ${F.next.map(n => `${mvMonthLabel(n.k)} ≈ <b>${fmtINRShort(n.v)}</b>`).join(', ')}.` });
+  return out;
+}
+function mvForecastCharts(D, X){
+  const F = X.F, id = X.id, col = X.locs.length === 1 ? locColor(X.locs[0]) : '#6C5CE7';
+  const ks = F.usable.slice(-6).concat([F.curK], F.next.map(n => n.k));
+  const actual = ks.map(k => k === F.curK ? F.mtd : (F.byM[k] !== undefined && k < F.curK ? F.byM[k] : null));
+  const fc = ks.map(k => k === F.curK ? F.projMonth : (F.next.find(n => n.k === k) || {}).v ?? null);
+  const lo = ks.map(k => k === F.curK ? Math.max(0, F.projMonth - F.projBand) : (F.next.find(n => n.k === k) || {}).lo ?? null);
+  const hi = ks.map(k => k === F.curK ? F.projMonth + F.projBand : (F.next.find(n => n.k === k) || {}).hi ?? null);
+  mvChart(id + '_fcm', { data: { labels: ks.map(mvMonthLabel), datasets: [
+      { type: 'bar', label: 'Actual', data: actual, backgroundColor: ks.map(k => k === F.curK ? col + '66' : col), borderRadius: 7, datalabels: mvLabels() },
+      { type: 'line', label: 'Forecast', data: fc, borderColor: '#F6A623', backgroundColor: '#F6A623', borderDash: [6, 4], tension: .25, pointRadius: 4, spanGaps: false, datalabels: { display: c => c.dataIndex >= ks.indexOf(F.curK), align: 'top', offset: 6, color: '#B36B00', font: { size: 10, weight: 700 }, formatter: v => v === null ? '' : fmtINRShort(v) } },
+      { type: 'line', label: 'High', data: hi, borderColor: 'transparent', backgroundColor: 'rgba(246,166,35,.14)', fill: '+1', pointRadius: 0, datalabels: { display: false } },
+      { type: 'line', label: 'Low', data: lo, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, datalabels: { display: false } }] },
+    options: { scales: { x: { grid: { display: false } }, y: mvY() }, plugins: { legend: { labels: { filter: i => i.text !== 'High' && i.text !== 'Low' } }, tooltip: { callbacks: { label: c => c.raw === null ? '' : `${c.dataset.label}: ${fmtINR(c.raw)}` } } } } },
+    (di, i) => di === 0 && actual[i] !== null ? ({ title: `${mvMonthLabel(ks[i])} — invoices`, rows: D.base.filter(r => mvMonthKey(r.date) === ks[i]) }) : null);
+  const days = Array.from({ length: F.daysIn }, (_, i) => i + 1), today = F.L.getDate();
+  let run = 0; const act = days.map(d => { if(d > today) return null; run += mvSum(F.mtdRows.filter(r => r.date.getDate() === d), 'net'); return run; });
+  let p = F.mtd; const y = F.L.getFullYear(), m = F.L.getMonth();
+  const proj = days.map(d => { if(d < today) return null; if(d === today) return F.mtd; p += F.wAvg[new Date(y, m, d).getDay()]; return p; });
+  const lastRows = D.base.filter(r => mvMonthKey(r.date) === F.lastK); let lr = 0;
+  const last = days.map(d => { lr += mvSum(lastRows.filter(r => r.date.getDate() === d), 'net'); return lr; });
+  mvChart(id + '_fcd', { type: 'line', data: { labels: days.map(String), datasets: [
+      { label: 'Actual', data: act, borderColor: col, backgroundColor: col + '22', fill: true, tension: .25, pointRadius: 0, borderWidth: 2.5 },
+      { label: 'Projected', data: proj, borderColor: '#F6A623', borderDash: [6, 4], tension: .25, pointRadius: 0, borderWidth: 2 },
+      { label: 'Last month', data: last, borderColor: '#A4A2C0', tension: .25, pointRadius: 0, borderWidth: 1.5 }] },
+    options: { interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { display: false }, title: { display: true, text: 'Day of month', color: THEME.inkDim } }, y: mvY() }, plugins: { datalabels: { display: false }, tooltip: { callbacks: { label: c => c.raw === null ? '' : `${c.dataset.label}: ${fmtINR(c.raw)}` } } } } });
+  const dn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], ord = [1, 2, 3, 4, 5, 6, 0];
+  mvChart(id + '_fcw', { type: 'bar', data: { labels: dn, datasets: [{ label: 'Average net sales', data: ord.map(i => F.wAvg[i]), backgroundColor: col, borderRadius: 6 }] },
+    options: { scales: { x: { grid: { display: false } }, y: mvY() }, plugins: { legend: { display: false }, datalabels: mvLabels() } } });
+}
+
+/* ---------------- Delhi Offline: extra customer KPIs (appended to the existing KPI row) ---------------- */
+function mvOfflineExtraKpis(){
+  if(!ALL_ROWS.length || typeof registerDrill !== 'function') return '';
+  const D = mvOfflineData(), C = mvCustomers(D), Cp = mvPrevCustomers(D), R = mvCustRows(C, D);
+  const pick = (list, src) => { const k = new Set(list.map(c => c.key)); return src.filter(r => k.has(mvKey(r))); };
+  const dec = D.prev.length ? C.list.filter(c => c.prev.net > 0 && c.cur.net < c.prev.net) : [], inc = D.prev.length ? C.list.filter(c => c.prev.net > 0 && c.cur.net > c.prev.net) : [];
+  const one = C.list.filter(c => c.life.inv === 1), diff = Cp ? C.repeatRate - Cp.repeatRate : null;
+  const since = D.P.all ? D.hist : D.hist.filter(r => r.date >= D.P.prevStart);
+  const tiles = [
+    { l: 'Repeat customer rate', i: '↻', v: fmtPct(C.repeatRate), s: `${fmtNum(C.repeatCount)} with 2+ orders` + (diff === null ? '' : ` · <span class="mv-g ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '▲' : '▼'} ${Math.abs(diff).toFixed(1)} pts</span>`), a: 'var(--indigo-2)', d: registerDrill('Invoices of repeat customers', R.rep) },
+    { l: 'Avg orders per customer', i: '#', v: C.avgOrders.toFixed(2), s: `AOV ${fmtINR(C.aov)}` + (Cp ? ` · ${mvGrowth(mvPct(C.avgOrders, Cp.avgOrders))}` : ''), a: 'var(--orange)', d: registerDrill('Orders in the selected period', R.active) },
+    { l: 'Growing customers', i: '▲', v: D.prev.length ? fmtNum(inc.length) : '—', s: D.prev.length ? `+${fmtINR(inc.reduce((s, c) => s + c.cur.net - c.prev.net, 0))} vs previous` : 'Pick a period to compare', a: 'var(--good)', d: D.prev.length ? registerDrill('Growing customers — this and previous period', pick(inc, since)) : '' },
+    { l: 'Declining customers', i: '▼', v: D.prev.length ? fmtNum(dec.length) : '—', s: D.prev.length ? `−${fmtINR(dec.reduce((s, c) => s + c.prev.net - c.cur.net, 0))} vs previous` : 'Pick a period to compare', a: 'var(--coral)', d: D.prev.length ? registerDrill('Declining customers — this and previous period', pick(dec, since)) : '' },
+    { l: 'Inactive customers', i: '⏸', v: fmtNum(C.inactive), s: `no order in ${dashCfg().customer.inactiveDays}+ days · ${fmtINR(C.segs['Lost'].life)} lifetime`, a: 'var(--ink-dim2)', d: registerDrill('Inactive customers — all their invoices', R.lost) },
+    { l: 'One-time buyers', i: '1', v: fmtPct(C.list.length ? one.length / C.list.length * 100 : 0), s: `${fmtNum(one.length)} customers ordered once`, a: 'var(--sky)', d: registerDrill('One-time buyers — their invoice', pick(one, D.hist)) }
+  ];
+  return tiles.map(c => `<div class="kpi ${c.d ? 'clickable' : ''}" style="--accent:${c.a}" ${c.d ? `data-drill="${c.d}"` : ''}><div class="kpi-head"><span>${c.l}</span><i>${c.i}</i></div><div class="val">${c.v}</div><div class="sub">${c.s}</div></div>`).join('');
+}
+function mvOfflineData(){
+  const base = baseFiltered(ALL_ROWS), win = periodWindow();
+  let latest = new Date(0); for(const r of base) if(r.date > latest) latest = r.date;
+  if(!latest.getTime()) latest = new Date();
+  let P;
+  if(win.isAll) P = { all: true, label: 'All time', end: mvEnd(latest) };
+  else { const len = win.end - win.start, pe = new Date(win.start.getTime() - 1); P = { start: win.start, end: win.end, prevStart: new Date(pe.getTime() - len), prevEnd: pe, label: (document.getElementById('periodDesc').textContent || '').replace(/^Showing /, ''), prevLabel: 'the previous period' }; }
+  return { base, cur: currentRows(), prev: P.all ? [] : base.filter(r => r.date >= P.prevStart && r.date <= P.prevEnd), hist: P.all ? base : base.filter(r => r.date <= P.end), P, latest };
+}
