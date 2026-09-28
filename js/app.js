@@ -195,6 +195,13 @@ function showError(msg){
 }
 function hideError(){ document.getElementById('errBar').classList.remove('show'); }
 
+/* hide the tabs this user has no right to see */
+function applyTabRights(){
+  const sales = userCan('sales'), scoring = userCan('scoring');
+  const allow = { main: sales, bi: sales, customers: sales, forecast: sales, scoring: scoring };
+  document.querySelectorAll('.sb-nav [data-tab]').forEach(b => { if(allow[b.dataset.tab] === false) b.style.display = 'none'; });
+  if(!sales && scoring){ const b = document.querySelector('.sb-nav [data-tab="scoring"]'); if(b) b.click(); }
+}
 /* draw the dashboard from a set of Delhi- Offline rows */
 function applyRows(rows){
     const meta = enrichAndIndex(rows);
@@ -411,9 +418,13 @@ async function renderUsersAdmin(){
   box.innerHTML = '<div class="muted">Loading users…</div>';
   try{
     const users = await listUsers();
-    box.innerHTML = `<table class="adm-users"><thead><tr><th>Email</th><th>Role</th><th>Added</th><th></th></tr></thead><tbody>` +
+    const hasPerms = users.some(u => u.perms !== undefined);
+    const permCells = u => ['sales','scoring','hrms'].map(k => { const p = normPerms(u.perms), adm = u.role === 'admin';
+      return `<td style="text-align:center"><input type="checkbox" data-user-perm="${escAttr(u.email)}" data-k="${k}" ${adm || p[k] ? 'checked' : ''} ${adm || !hasPerms ? 'disabled' : ''} title="${adm ? 'Admins can see everything' : ''}"></td>`; }).join('');
+    box.innerHTML = (hasPerms ? '' : `<div class="dept-note">Run <b>hrms-setup.sql</b> in Supabase to turn on Sales / Scoring / HRMS rights per user.</div>`) +
+      `<table class="adm-users"><thead><tr><th>Email</th><th>Role</th><th style="text-align:center">Sales</th><th style="text-align:center">Scoring</th><th style="text-align:center">HRMS</th><th>Added</th><th></th></tr></thead><tbody>` +
       users.map(u => `<tr><td>${escAttr(u.email)}${u.email===CURRENT_USER.email?' <span class="chip">you</span>':''}</td>
-        <td>${u.email==='mis2@picknpack.co' ? '<b>Owner (admin)</b>' : `<select data-user-role="${escAttr(u.email)}"><option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select>`}</td>
+        <td>${u.email==='mis2@picknpack.co' ? '<b>Owner (admin)</b>' : `<select data-user-role="${escAttr(u.email)}"><option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select>`}</td>${permCells(u)}
         <td class="muted">${u.added_at ? new Date(u.added_at).toLocaleDateString('en-GB') : ''}</td>
         <td>${u.email==='mis2@picknpack.co' || u.email===CURRENT_USER.email ? '' : `<button type="button" class="link-btn" data-user-del="${escAttr(u.email)}">Remove</button>`}</td></tr>`).join('') +
       `</tbody></table>`;
@@ -421,12 +432,18 @@ async function renderUsersAdmin(){
 }
 document.getElementById('admUserAddBtn').addEventListener('click', async ()=>{
   const email = document.getElementById('admUserEmail').value, role = document.getElementById('admUserRole').value;
-  try{ await addUser(email, role); document.getElementById('admUserEmail').value = ''; showToast('User added ✓ — they can log in now'); renderUsersAdmin(); }
+  const perms = { sales: document.getElementById('admPermSales').checked, scoring: document.getElementById('admPermScoring').checked, hrms: document.getElementById('admPermHrms').checked };
+  try{ await addUser(email, role, perms); document.getElementById('admUserEmail').value = ''; showToast('User added ✓ — they can log in now'); renderUsersAdmin(); }
   catch(e){ alert(e.message); }
 });
 document.getElementById('admUsers').addEventListener('change', async e=>{
+  const pc = e.target.closest('[data-user-perm]');
+  if(pc){ const em = pc.dataset.userPerm, perms = {};
+    document.querySelectorAll(`[data-user-perm="${CSS.escape(em)}"]`).forEach(x => perms[x.dataset.k] = x.checked);
+    try{ await setUserPerms(em, perms); showToast('Rights updated ✓ — applies at their next page load'); }catch(err){ alert(err.message); renderUsersAdmin(); }
+    return; }
   const s = e.target.closest('[data-user-role]'); if(!s) return;
-  try{ await addUser(s.dataset.userRole, s.value); showToast('Role updated ✓'); }catch(err){ alert(err.message); renderUsersAdmin(); }
+  try{ await addUser(s.dataset.userRole, s.value); showToast('Role updated ✓'); renderUsersAdmin(); }catch(err){ alert(err.message); renderUsersAdmin(); }
 });
 document.getElementById('admUsers').addEventListener('click', async e=>{
   const b = e.target.closest('[data-user-del]'); if(!b) return;
@@ -595,6 +612,11 @@ async function startDashboard(){
     ]);
     if(settings) ADMIN = settings;
     applyBranding(); applyPanelVisibility(); navRender(); QA_PAGE_LOCS = ['Delhi- Offline'];
+    // rights: Sales / Scoring / HRMS
+    const home = homeFor();
+    if(!home){ document.getElementById('loadingScreen').style.display = 'none'; showError('Your account has no dashboard rights yet. Ask the admin (mis2@picknpack.co) to tick Sales, Scoring or HRMS for you in Settings → Users.'); return; }
+    if(home !== 'index.html'){ location.replace(home); return; }
+    applyTabRights();
     const dflt = dashCfg().defaultDashboard, dl = locByCode(dflt);
     if(dflt && dflt !== 'offline' && !sessionStorage.getItem('pnp_live_opened') && !location.hash){
       sessionStorage.setItem('pnp_live_opened', '1');

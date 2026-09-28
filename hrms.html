@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pick N Pack — Dashboard</title>
+<title>Pick N Pack — HRMS</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=20260930">
 </head>
-<body data-page="online">
+<body data-page="hrms">
 <div class="login-gate" id="loginGate" style="display:none">
   <div class="gate-card">
     <img src="assets/logo.png?v=20260930" alt="PicknPack" class="gate-logo" onerror="this.style.display='none'">
@@ -44,21 +44,21 @@
   <aside class="sidebar">
     <img class="sb-logo" id="sbLogo" alt="" style="display:none"><div class="sb-brand">PnP</div>
     <nav class="sb-nav">
-      <button class="sb-item active" data-stab="sales" title="Sales overview">
+      <button class="sb-item active" data-stab="overview" title="Overview">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>
-        <span>Sales overview</span>
+        <span>Overview</span>
       </button>
-      <button class="sb-item" data-stab="customers" title="Customers">
+      <button class="sb-item" data-stab="candidates" title="Candidates">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
-        <span>Customers</span>
+        <span>Candidates</span>
       </button>
-      <button class="sb-item" data-stab="geo" title="Geography">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
-        <span>Geography</span>
+      <button class="sb-item" data-stab="results" title="Test results">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>
+        <span>Test results</span>
       </button>
-      <button class="sb-item" data-stab="forecast" title="Forecast">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
-        <span>Forecast</span>
+      <button class="sb-item" data-stab="tests" title="Tests">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Tests</span>
       </button>
     </nav>
   </aside>
@@ -69,8 +69,8 @@
         <img id="brandLogo" class="brand-logo" alt="Company logo" style="display:none">
         <div>
           <p class="brand" id="brandLabel">PICK N PACK</p>
-          <h1 id="dashTitle">Dashboard</h1>
-          <p class="period"><span class="loc-pill" id="locPill"></span></p>
+          <h1 id="dashTitle">HRMS</h1>
+          <p class="period"><span class="loc-pill" id="locPill">Hiring tests · Candidate Master</span></p>
         </div>
       </div>
       <div class="sync-box">
@@ -95,18 +95,24 @@
     <div id="dashboardBody" style="display:none">
       <section class="hero">
         <div class="hero-text">
-          <p class="hero-hello" id="heroTitle"></p>
-          <p class="hero-sub" id="heroSub"></p>
+          <p class="hero-hello" id="heroTitle">HRMS — Hiring</p>
+          <p class="hero-sub" id="heroSub">Every candidate and every test attempt, synced from the hiring-tests sheet. Shortlist, reject and keep remarks here.</p>
         </div>
         <svg class="hero-art" viewBox="0 0 220 120" fill="#fff" aria-hidden="true"><rect x="10" y="70" width="26" height="40" rx="5" opacity=".35"/><rect x="46" y="50" width="26" height="60" rx="5" opacity=".45"/><rect x="82" y="60" width="26" height="50" rx="5" opacity=".4"/><rect x="118" y="30" width="26" height="80" rx="5" opacity=".55"/><rect x="154" y="15" width="26" height="95" rx="5" opacity=".65"/></svg>
         <div class="hero-figure">
-          <div class="mb-title" id="heroFigTitle">Net sales</div>
+          <div class="mb-title" id="heroFigTitle">Tests</div>
           <div class="mb-val" id="heroFig">—</div>
           <div class="mb-sub" id="heroFigSub"></div>
         </div>
       </section>
+      <div class="filterbar mv-filterbar">
+        <div class="filter-block" id="hrPeriodBlock"><span class="fb-label">Period</span><div class="seg-toggle" id="hrPreset">
+          <button data-p="thisMonth">This month</button><button data-p="lastMonth">Last month</button><button data-p="last7">7 days</button><button data-p="last30">30 days</button><button data-p="last3">3 months</button><button data-p="fy">This FY</button><button data-p="all" class="active">All time</button><button data-p="custom">Custom</button></div></div>
+        <div class="filter-block" id="hrCustom" style="display:none"><span class="fb-label">From – to</span><div style="display:flex;gap:6px"><input type="date" id="hrCs"><input type="date" id="hrCe"></div></div>
+        <div class="filter-block"><span class="fb-label">Test</span><select id="hrTest"><option value="ALL">All tests</option></select></div>
+      </div>
       <div id="dashRoot"></div>
-      <footer>Values in INR, excluding GST unless shown. Data from Supabase, synced from Zoho ERP.</footer>
+      <footer>Data from Supabase, synced every 10 minutes from the hiring-tests Google Sheet (backup of the Candidate Master is written back to its Candidates tab every night).</footer>
     </div>
   </div>
   </main>
@@ -117,16 +123,12 @@
 <script src="js/config.js?v=20260930"></script>
 <script src="js/dash-config.js?v=20260930"></script>
 <script src="js/format.js?v=20260930"></script>
-<script src="js/data.js?v=20260930"></script>
 <script src="js/vendor/supabase.js?v=20260930"></script>
 <script src="js/cloud.js?v=20260930"></script>
 <script src="js/charts.js?v=20260930"></script>
-<script src="js/vendor/india-map.js?v=20260930"></script>
-<script src="js/customer-map.js?v=20260930"></script>
 <script src="js/multi.js?v=20260930"></script>
-<script src="js/qa.js?v=20260930"></script>
 <script src="js/nav.js?v=20260930"></script>
-<script src="js/page.js?v=20260930"></script>
+<script src="js/hrms.js?v=20260930"></script>
 <script>
   document.getElementById('gateGoogle').addEventListener('click', ()=>signInGoogle());
   document.getElementById('gateEmailBtn').addEventListener('click', ()=>signInEmail(document.getElementById('gateEmail').value));

@@ -14,8 +14,8 @@ function pError(msg){ const b = document.getElementById('errBar'); b.innerHTML =
 function pBranding(){
   document.getElementById('brandLabel').textContent = ADMIN.brandName || 'PICK N PACK';
   const logo = document.getElementById('brandLogo'), icon = document.getElementById('sbLogo');
-  logo.onload = () => logo.style.display = ''; logo.onerror = () => logo.style.display = 'none'; logo.src = ADMIN.logo || 'assets/logo.png?v=20260928';
-  icon.onload = () => { icon.style.display = ''; document.querySelector('.sb-brand').style.display = 'none'; }; icon.onerror = () => icon.style.display = 'none'; icon.src = 'assets/logo-icon.png?v=20260928';
+  logo.onload = () => logo.style.display = ''; logo.onerror = () => logo.style.display = 'none'; logo.src = ADMIN.logo || 'assets/logo.png?v=20260930';
+  icon.onload = () => { icon.style.display = ''; document.querySelector('.sb-brand').style.display = 'none'; }; icon.onerror = () => icon.style.display = 'none'; icon.src = 'assets/logo-icon.png?v=20260930';
 }
 function pConfig(){
   if(PAGE === 'summary'){
@@ -90,6 +90,7 @@ async function pStart(){
     document.getElementById('avatarBadge').textContent = CURRENT_USER.email.slice(0, 2).toUpperCase();
     const [settings, cached] = await Promise.all([loadSharedSettings().catch(() => null), fetchCachedRows().catch(() => null)]);
     if(settings) ADMIN = settings;
+    if(!userCan('sales')){ location.replace(homeFor() || 'index.html'); return; }   // Sales right needed for these dashboards
     pBranding(); navRender();
     if(cached){ pDraw(); pStatus(true, 'Checking for new invoices…'); }
     await pLoad(false);

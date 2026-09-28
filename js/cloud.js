@@ -76,14 +76,58 @@ async function requireUser(){
 }
 async function checkAccess(session){
   const email = String(session.user.email || '').toLowerCase();
-  const { data, error } = await cloudReady().from('app_users').select('email,role').eq('email', email).maybeSingle();
+  let { data, error } = await cloudReady().from('app_users').select('email,role,perms').eq('email', email).maybeSingle();
+  if(error && /perms/.test(error.message)){                                   // hrms-setup.sql not run yet → old behaviour
+    ({ data, error } = await cloudReady().from('app_users').select('email,role').eq('email', email).maybeSingle());
+  }
   if(error) throw new Error('Access check failed: ' + error.message);
   if(!data){ showGate('noaccess', email); return new Promise(()=>{}); }      // stays on the "no access" screen
-  CURRENT_USER = { email, role: data.role };
+  CURRENT_USER = { email, role: data.role, perms: normPerms(data.perms) };
   hideGate();
   return CURRENT_USER;
 }
 const isAdminUser = () => !!(CURRENT_USER && CURRENT_USER.role === 'admin');
+/* Rights per user: sales (all sales dashboards), scoring (MIS scoring tab), hrms (HRMS). Admins have all. */
+const PERM_DEFAULT = { sales: true, scoring: true, hrms: false };
+function normPerms(p){ const o = Object.assign({}, PERM_DEFAULT); if(p && typeof p === 'object') Object.keys(PERM_DEFAULT).forEach(k => { if(p[k] !== undefined) o[k] = !!p[k]; }); return o; }
+function userCan(p){ if(!CURRENT_USER) return false; if(CURRENT_USER.role === 'admin') return true; return !!(CURRENT_USER.perms || PERM_DEFAULT)[p]; }
+/* the page a user without Sales rights should land on */
+function homeFor(){ if(userCan('sales') || userCan('scoring')) return 'index.html'; if(userCan('hrms')) return 'hrms.html'; return null; }
+async function setUserPerms(email, perms){
+  const { error } = await cloudReady().from('app_users').update({ perms: normPerms(perms) }).eq('email', email);
+  if(error) throw new Error(/perms/.test(error.message) ? 'Run hrms-setup.sql in Supabase first (it adds user rights).' : error.message);
+}
+/* ---------------- HRMS data ---------------- */
+async function hrmsSelectAll(table, cols, order){
+  const sb = cloudReady(); let out = [], from = 0;
+  while(true){
+    const { data, error } = await sb.from(table).select(cols).order(order, { ascending: true }).range(from, from + 999);
+    if(error) throw new Error('HRMS: ' + error.message);
+    out = out.concat(data || []); if(!data || data.length < 1000) break; from += 1000;
+  }
+  return out;
+}
+async function loadHrmsData(){
+  const cols = 'ref_id,ts,dept_id,dept_name,name,mobile,email,state,city,experience,score,total,percent,result,time_taken_sec,attempted,tab_switches,source,notes';
+  const results = await hrmsSelectAll('hrms_results', cols + ',department', 'ref_id')
+    .catch(e => { if(/department/.test(e.message)) return hrmsSelectAll('hrms_results', cols, 'ref_id'); throw e; });   // before the department column exists
+  const [tests, cands] = await Promise.all([hrmsSelectAll('hrms_tests', '*', 'name'), hrmsSelectAll('hrms_candidates', '*', 'mobile')]);
+  return { tests, cands, results };
+}
+async function loadHrmsAnswers(refId){
+  const { data, error } = await cloudReady().from('hrms_results').select('answers').eq('ref_id', refId).maybeSingle();
+  if(error) throw new Error(error.message); return (data && data.answers) || [];
+}
+async function saveCandidate(c, isNew){
+  const row = { mobile: c.mobile, name: c.name, email: c.email || null, state: c.state || null, city: c.city || null, experience: c.experience || null, department: c.department || null,
+    status: c.status || 'New', remarks: c.remarks || null, updated_at: new Date().toISOString(), updated_by: CURRENT_USER.email };
+  if(isNew) row.source = 'manual';
+  const run = r => isNew ? cloudReady().from('hrms_candidates').insert(r) : cloudReady().from('hrms_candidates').update(r).eq('mobile', c.mobile);
+  let { error } = await run(row);
+  if(error && /department/.test(error.message)){ delete row.department; ({ error } = await run(row)); }
+  if(error) throw new Error(/duplicate/.test(error.message) ? 'A candidate with this mobile number already exists.' : error.message);
+  return row;
+}
 
 /* ============================ BROWSER CACHE (IndexedDB) ============================ */
 function idbOpen(){
@@ -243,13 +287,17 @@ function oldDashboardSettings(){
 
 /* ============================ USERS ============================ */
 async function listUsers(){
-  const { data, error } = await cloudReady().from('app_users').select('email,role,added_at,added_by').order('added_at', { ascending: true });
+  let { data, error } = await cloudReady().from('app_users').select('email,role,perms,added_at,added_by').order('added_at', { ascending: true });
+  if(error && /perms/.test(error.message)) ({ data, error } = await cloudReady().from('app_users').select('email,role,added_at,added_by').order('added_at', { ascending: true }));
   if(error) throw new Error(error.message); return data || [];
 }
-async function addUser(email, role){
+async function addUser(email, role, perms){
   email = String(email || '').trim().toLowerCase();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Please enter a valid email address.');
-  const { error } = await cloudReady().from('app_users').upsert({ email, role: role === 'admin' ? 'admin' : 'viewer', added_by: CURRENT_USER.email }, { onConflict: 'email' });
+  const row = { email, role: role === 'admin' ? 'admin' : 'viewer', added_by: CURRENT_USER.email };
+  if(perms) row.perms = normPerms(perms);
+  let { error } = await cloudReady().from('app_users').upsert(row, { onConflict: 'email' });
+  if(error && perms && /perms/.test(error.message)){ delete row.perms; ({ error } = await cloudReady().from('app_users').upsert(row, { onConflict: 'email' })); }
   if(error) throw new Error(error.message.indexOf('row-level security') >= 0 ? 'Only admins can add users (the owner\'s role cannot be changed).' : error.message);
 }
 async function removeUser(email){
