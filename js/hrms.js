@@ -171,7 +171,7 @@ function hrResultsHtml(P, F){
       <td style="text-align:right">${r.score ?? '—'} / ${r.total ?? '—'}</td><td style="text-align:right;font-weight:700">${fmtPct(r.percent)}</td><td>${hrResPill(r.result)}</td><td style="text-align:right">${hrTime(r.time_taken_sec)}</td><td style="text-align:right">${r.attempted ?? '—'}</td>
       <td style="text-align:right">${(r.tab_switches || 0) >= 3 ? `<span class="mv-g down">${r.tab_switches}</span>` : (r.tab_switches ?? 0)}</td><td>${c ? hrStatusPill(c.status) : '—'}</td><td class="muted">${escAttr([r.notes, r.source === 'unverified' ? 'unverified' : ''].filter(Boolean).join('; '))}</td></tr>`; }).join('') || '<tr><td colspan="13" class="empty-note">No attempts match.</td></tr>'}
     </tbody></table></div>${rows.length > HR.limit ? `<div style="text-align:center;margin-top:10px"><button class="util-btn small" data-hrmore="1">Show more (${fmtNum(rows.length - HR.limit)} left)</button></div>` : ''}`,
-    `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${sel}<input class="table-search" id="hrSearch" placeholder="Search name, mobile, ref…" value="${escAttr(HR.q)}"><button class="util-btn small" data-hrcsv="results">Export CSV</button></div>`);
+    `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${sel}<input class="table-search" id="hrSearch" placeholder="Search name, mobile, ref…" value="${escAttr(HR.q)}"><button class="util-btn small" data-hrcsv="results">Export CSV</button><button class="util-btn small" data-hrprintall="1" title="List ke saare results — har candidate ek A4 page par">🖨 Print all (1 page each)</button></div>`);
 }
 
 /* ---------------- TESTS ---------------- */
@@ -234,7 +234,7 @@ function hrModal(title, sub, html){
 }
 async function hrOpenResult(ref){
   const r = HR.results.find(x => x.ref_id === ref); if(!r) return;
-  const ov = hrModal(`${r.name} — ${r.dept_name}`, `${r.ref_id} · ${hrDate(r.date)} · ${r.mobile}`, `<div class="qa-kpis">${[['Score', `${r.score ?? '—'} / ${r.total ?? '—'}`], ['Percent', fmtPct(r.percent)], ['Result', r.result], ['Time', hrTime(r.time_taken_sec)], ['Attempted', r.attempted ?? '—'], ['Tab switches', r.tab_switches ?? 0]].map(([l, v]) => `<div class="qa-kpi"><span>${l}</span><b>${escAttr(String(v))}</b></div>`).join('')}</div>${r.notes || r.source === 'unverified' ? `<div class="mv-note">${escAttr([r.notes, r.source === 'unverified' ? 'Submitted after the session expired (unverified)' : ''].filter(Boolean).join(' · '))}</div>` : ''}<div id="hrAns"><p class="muted">Loading answers…</p></div>`);
+  const ov = hrModal(`${r.name} — ${r.dept_name}`, `${r.ref_id} · ${hrDate(r.date)} · ${r.mobile}`, `<div style="display:flex;justify-content:flex-end;margin:-4px 0 10px"><button class="refresh-btn" data-hrprint="${escAttr(r.ref_id)}" title="Is candidate ka result ek A4 page par print / PDF karein">🖨 Print (1 page)</button></div><div class="qa-kpis">${[['Score', `${r.score ?? '—'} / ${r.total ?? '—'}`], ['Percent', fmtPct(r.percent)], ['Result', r.result], ['Time', hrTime(r.time_taken_sec)], ['Attempted', r.attempted ?? '—'], ['Tab switches', r.tab_switches ?? 0]].map(([l, v]) => `<div class="qa-kpi"><span>${l}</span><b>${escAttr(String(v))}</b></div>`).join('')}</div>${r.notes || r.source === 'unverified' ? `<div class="mv-note">${escAttr([r.notes, r.source === 'unverified' ? 'Submitted after the session expired (unverified)' : ''].filter(Boolean).join(' · '))}</div>` : ''}<div id="hrAns"><p class="muted">Loading answers…</p></div>`);
   try{
     const ans = await loadHrmsAnswers(ref);
     ov.querySelector('#hrAns').innerHTML = ans.length ? `<div class="table-scroll" style="max-height:52vh"><table><thead><tr><th>#</th><th>Question</th><th>Answer given</th><th>Correct answer</th><th></th></tr></thead><tbody>${ans.map((a, i) => { const o = a.o || {}; const txt = k => k ? `${k}${o[k] ? ' · ' + escAttr(o[k]) : ''}` : '<span class="muted">not answered</span>';
@@ -250,7 +250,7 @@ function hrOpenCandidate(mobile, isNew){
       <div class="admin-field"><label>Status</label><select id="hc_status">${HR_STATUSES.map(s => `<option ${s === (c.status || 'New') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
       <div class="admin-field" style="grid-column:1/-1"><label>Remarks</label><textarea id="hc_remarks" rows="3" style="width:100%;font:inherit">${escAttr(c.remarks || '')}</textarea></div></div>
      <div style="display:flex;gap:8px;margin:6px 0 14px"><button class="refresh-btn" id="hcSave">${isNew ? 'Add candidate' : 'Save changes'}</button><span class="muted" id="hcMsg" style="align-self:center"></span></div>
-     ${isNew ? '' : `<h3 class="score-h3" style="margin:4px 0 6px">Test attempts</h3><div class="table-scroll"><table><thead><tr><th>Date</th><th>Test</th><th style="text-align:right">Score</th><th style="text-align:right">%</th><th>Result</th><th style="text-align:right">Time</th><th style="text-align:right">Tab switches</th></tr></thead><tbody>${attempts || '<tr><td colspan="7" class="empty-note">No tests yet.</td></tr>'}</tbody></table></div>`}`);
+     ${isNew ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0 6px"><h3 class="score-h3" style="margin:0">Test attempts</h3>${(c.attempts || []).length ? `<button class="util-btn small" data-hrprintcand="${escAttr(c.mobile)}">🖨 Print attempts (1 page each)</button>` : ''}</div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Test</th><th style="text-align:right">Score</th><th style="text-align:right">%</th><th>Result</th><th style="text-align:right">Time</th><th style="text-align:right">Tab switches</th></tr></thead><tbody>${attempts || '<tr><td colspan="7" class="empty-note">No tests yet.</td></tr>'}</tbody></table></div>`}`);
   document.getElementById('hcSave').onclick = async () => {
     const v = k => document.getElementById('hc_' + k).value.trim();
     const row = { mobile: isNew ? v('mobile').replace(/\D/g, '').slice(-10) : c.mobile, name: v('name'), email: v('email'), state: v('state'), city: v('city'), department: v('department'), experience: v('experience'), status: v('status'), remarks: v('remarks') };
@@ -281,6 +281,9 @@ function hrCsv(which){
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-hr]'); if(a){ const fn = HR.drill.get(a.dataset.hr); if(fn) fn(); return; }
   if(e.target.closest('select')) return;
+  const pr = e.target.closest('[data-hrprint]'); if(pr){ hrPrintRefs([pr.dataset.hrprint], pr); return; }
+  const pa = e.target.closest('[data-hrprintall]'); if(pa){ hrPrintAll(pa); return; }
+  const pc = e.target.closest('[data-hrprintcand]'); if(pc){ const cd = HR.byMobile.get(pc.dataset.hrprintcand); if(cd) hrPrintRefs((cd.attempts || []).map(x => x.ref_id), pc); return; }
   const r = e.target.closest('[data-hrres]'); if(r){ hrOpenResult(r.dataset.hrres); return; }
   const c = e.target.closest('[data-hrcand]'); if(c){ hrOpenCandidate(c.dataset.hrcand); return; }
   const t = e.target.closest('[data-hrtest]'); if(t){ HR.test = t.dataset.hrtest; HR.res = 'ALL'; hrTab('results'); return; }
@@ -572,4 +575,92 @@ function hrWireSettings(){
     catch(e){ msg.textContent = e.message; } finally { HR.api = old || url; } };
   document.getElementById('hsMigrate').onclick = async () => { const m = document.getElementById('hsMig');
     try { m.textContent = 'Importing…'; const r = await hrApi('migrateLegacy'); m.textContent = r.message || `${r.imported} results imported`; } catch(e){ m.textContent = e.message; } };
+}
+
+/* =====================================================================
+   One-page print: har result ek A4 page par (kisi bhi test ka)
+   - Result popup → "Print (1 page)"
+   - Test results tab → "Print all (1 page each)" (current filters ke saare results)
+   - Candidate popup → "Print attempts"
+   Lambe tests (36+ sawal) bhi apne aap chhote hokar ek hi page me fit hote hain.
+   ===================================================================== */
+const HR_PRINT_MAX = 200;
+function hrPrintSheet(r, ans){
+  const c = HR.byMobile.get(String(r.mobile || '').replace(/\D/g, '').slice(-10)) || {};
+  const pass = r.result === 'PASS', list = ans || [];
+  const right = list.filter(a => a.ok).length, skip = list.filter(a => !a.u).length, wrong = list.length - right - skip;
+  const dt = r.date ? `${hrDate(r.date)} ${r.date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : '—';
+  const info = [['Mobile', r.mobile], ['Email', r.email || c.email], ['City / State', [r.city || c.city, r.state || c.state].filter(Boolean).join(', ')],
+    ['Department', r.department || c.department], ['Experience', r.experience || c.experience], ['Test date', dt], ['Ref ID', r.ref_id], ['Status', c.status || 'New']];
+  const kpi = [['Score', `${r.score ?? '—'} / ${r.total ?? '—'}`], ['Percent', fmtPct(r.percent)], ['Time taken', hrTime(r.time_taken_sec)], ['Attempted', r.attempted ?? '—'],
+    ['Correct / Wrong / Skip', list.length ? `${right} / ${wrong} / ${skip}` : '—'], ['Tab switches', r.tab_switches ?? 0]];
+  const opt = (a, k) => { const o = a.o || {}; return k ? `<b>${escAttr(k)}</b>${o[k] ? ' · ' + escAttr(o[k]) : ''}` : '<i class="na">Not answered</i>'; };
+  const rows = list.map((a, i) => { const st = !a.u ? 'sk' : a.ok ? 'ok' : 'no';
+    return `<tr class="${st}"><td class="n">${a.sno || i + 1}</td><td class="q">${escAttr(a.q || '')}${a.tag ? ` <span class="tag">${escAttr(a.tag)}</span>` : ''}</td><td>${opt(a, a.u)}</td><td>${opt(a, a.c)}</td><td class="m">${st === 'ok' ? '✓' : st === 'no' ? '✗' : '–'}</td></tr>`; }).join('');
+  const note = [r.notes, r.source === 'unverified' ? 'Submitted after the session expired (unverified)' : '', (r.tab_switches || 0) >= 3 ? 'Flagged: 3+ tab switches' : ''].filter(Boolean).join(' · ');
+  const brand = (typeof ADMIN !== 'undefined' && ADMIN && ADMIN.brandName) || 'PicknPack Solutions';
+  return `<section class="sheet">
+    <header><div><div class="brand">${escAttr(brand)}</div><div class="sub">Hiring test — candidate result</div></div><div class="test">${escAttr(r.dept_name || 'Test')}</div></header>
+    <div class="who"><div><div class="name">${escAttr(r.name || '—')}</div><div class="grid">${info.map(([l, v]) => `<div><span>${l}</span><b>${escAttr(v || '—')}</b></div>`).join('')}</div></div>
+      <div class="verdict ${pass ? 'pass' : 'fail'}"><div class="big">${escAttr(r.result || '—')}</div><div>${fmtPct(r.percent)}</div></div></div>
+    <div class="kpis">${kpi.map(([l, v]) => `<div><span>${l}</span><b>${escAttr(String(v))}</b></div>`).join('')}</div>
+    ${note ? `<div class="note">${escAttr(note)}</div>` : ''}
+    ${ans === null ? '<div class="note">Answer detail could not be loaded.</div>' : list.length ? `<table><thead><tr><th class="n">#</th><th>Question</th><th>Answer given</th><th>Correct answer</th><th class="m"></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="note">No answer detail stored for this attempt.</div>'}
+    ${c.remarks ? `<div class="rem"><span>HR remarks:</span> ${escAttr(c.remarks)}</div>` : ''}
+    <div class="sign"><div>HR remarks</div><div>Interviewer</div><div>Signature &amp; date</div></div>
+    <footer><span>Confidential — ${escAttr(brand)} HR</span><span>Printed ${escAttr(new Date().toLocaleString('en-GB'))}${CURRENT_USER && CURRENT_USER.email ? ' by ' + escAttr(CURRENT_USER.email) : ''}</span></footer>
+  </section>`;
+}
+function hrPrintDoc(sheets, title){
+  const css = `@page{size:A4 portrait;margin:8mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;padding:0;background:#fff}
+    body{font-family:Poppins,"Segoe UI",Arial,sans-serif;color:#1E1B4B;font-size:9pt;line-height:1.3}
+    .sheet{width:194mm;overflow:hidden;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}
+    header{display:flex;justify-content:space-between;align-items:center;background:#2F2A7A;color:#fff;padding:7px 12px;border-radius:8px}
+    .brand{font-weight:700;font-size:12pt}.sub{font-size:7.5pt;opacity:.75}.test{font-weight:700;font-size:11pt;text-align:right}
+    .who{display:flex;gap:10px;margin:8px 0 6px}.who>div:first-child{flex:1}.name{font-size:15pt;font-weight:700;margin-bottom:4px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px 10px}.grid span,.kpis span{display:block;font-size:6.8pt;color:#7a7799}.grid b{font-size:8.3pt;font-weight:600;word-break:break-word}
+    .verdict{min-width:30mm;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600}.verdict .big{font-size:18pt;font-weight:800}
+    .pass{background:#e6f7ef;color:#12805c;border:1.5px solid #8bd9b8}.fail{background:#fdecee;color:#c8203b;border:1.5px solid #f3a5b2}
+    .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:6px}.kpis div{background:#f3f2fa;border-radius:6px;padding:4px 7px}.kpis b{font-size:10pt}
+    .note{background:#fff7e6;border-radius:6px;padding:4px 8px;font-size:7.5pt;color:#8a5a00;margin-bottom:5px}.rem{font-size:8pt;margin-top:6px}.rem span{color:#7a7799}
+    table{width:100%;border-collapse:collapse;font-size:8pt}th{background:#f3f2fa;text-align:left;font-size:7pt;color:#6b6890;padding:4px 5px;font-weight:600}
+    td{padding:3px 5px;border-bottom:1px solid #ecebf5;vertical-align:top}td.n,th.n{width:7mm;color:#7a7799}td.m,th.m{width:6mm;text-align:center;font-weight:800}td.q{width:52%}
+    tr.ok td.m{color:#12805c}tr.no td.m{color:#c8203b}tr.sk td.m{color:#b7791f}tr.no{background:#fff6f7}.tag{color:#8a87a8;font-size:6.8pt}.na{color:#b7791f}tr{page-break-inside:avoid}
+    .sign{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:10px}.sign div{border-top:1px solid #9a97b5;padding-top:3px;font-size:7pt;color:#7a7799;height:13mm}
+    footer{display:flex;justify-content:space-between;font-size:6.8pt;color:#9a97b5;margin-top:2px}`;
+  // A4 (297mm − 2×8mm) se lamba sheet ho to usko zoom karke ek page me laao
+  const fit = `function fit(){var H=279*96/25.4;document.querySelectorAll('.sheet').forEach(function(s){s.style.zoom=1;s.style.width='194mm';for(var i=0;i<3;i++){var z=parseFloat(s.style.zoom)||1,h=s.scrollHeight*z;if(h<=H)break;z=Math.max(.42,z*H/h*.985);s.style.zoom=z;s.style.width=(194/z)+'mm';}});}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escAttr(title)}</title><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet"><style>${css}</style></head><body>${sheets.join('')}<script>${fit}<\/script></body></html>`;
+}
+function hrPrintOpen(html){
+  const old = document.getElementById('hrPrintFrame'); if(old) old.remove();
+  const f = document.createElement('iframe'); f.id = 'hrPrintFrame';
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const w = f.contentWindow, d = w.document; d.open(); d.write(html); d.close();
+  const go = () => { try { w.fit(); } catch(e){ /* ignore */ } setTimeout(() => { w.focus(); w.print(); }, 150); };
+  setTimeout(() => { const ready = d.fonts && d.fonts.ready; ready ? ready.then(go, go) : go(); }, 300);
+}
+async function hrPrintRefs(refs, btn){
+  refs = [...new Set(refs.filter(Boolean))];
+  if(!refs.length){ showToast('Print ke liye koi result nahi hai.'); return; }
+  if(refs.length > HR_PRINT_MAX && !confirm(`${fmtNum(refs.length)} results hain. Pehle ${HR_PRINT_MAX} print honge. Continue?`)) return;
+  refs = refs.slice(0, HR_PRINT_MAX);
+  const label = btn ? btn.textContent : '', out = new Array(refs.length);
+  if(btn) btn.disabled = true;
+  let next = 0, done = 0;
+  const worker = async () => { while(next < refs.length){ const i = next++, r = HR.results.find(x => x.ref_id === refs[i]);
+    let ans = null; if(r){ try { ans = await loadHrmsAnswers(r.ref_id) || []; } catch(e){ ans = null; } }
+    out[i] = r ? hrPrintSheet(r, ans) : ''; done++; if(btn) btn.textContent = refs.length > 1 ? `Loading ${done}/${refs.length}…` : 'Preparing…'; } };
+  try { await Promise.all([worker(), worker(), worker(), worker()]); }
+  finally { if(btn){ btn.disabled = false; btn.textContent = label; } }
+  const sheets = out.filter(Boolean);
+  if(!sheets.length){ showToast('Results load nahi hue.'); return; }
+  const one = refs.length === 1 && HR.results.find(x => x.ref_id === refs[0]);
+  hrPrintOpen(hrPrintDoc(sheets, one ? `${one.name} - ${one.dept_name}` : `Test results ${new Date().toISOString().slice(0, 10)}`));
+}
+function hrPrintAll(btn){
+  const rows = hrResultsRows(hrFiltered(hrPeriod()));
+  if(!rows.length){ showToast('List me koi result nahi hai — filter ya period badal kar dekhein.'); return; }
+  hrPrintRefs(rows.map(r => r.ref_id), btn);
 }
